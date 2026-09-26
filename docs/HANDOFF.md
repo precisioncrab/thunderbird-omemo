@@ -1,6 +1,6 @@
 # Handoff notes
 
-_How to pick this project up or review it. The current state and log are in `docs/STATUS.md` (newest on top); the architecture and milestones are in `docs/PLAN.md`; the task list and per-namespace protocol constants are in `docs/TASKS.md`. Last updated 2026-09-26, at the 0.1.0 release._
+_How to pick this project up or review it. The current state and log are in `docs/STATUS.md` (newest on top); the architecture and milestones are in `docs/PLAN.md`; the task list and per-namespace protocol constants are in `docs/TASKS.md`. Last updated 2026-09-26, after the fixes from the first code review (`docs/CODE_REVIEW.md`)._
 
 ## Setup
 
@@ -11,7 +11,7 @@ npm install
 npm test
 ```
 
-This needs Node 22 or newer (`npm test` passes a glob to `node --test`). All 251 tests should pass. `npm run test:coverage` adds Node's coverage report; the crypto core is fully covered apart from three unreachable length checks. Shared test helpers (vector loading, hex/base64, `replay` for injecting recorded randomness) are in `test/helpers.js`.
+This needs Node 22 or newer (`npm test` passes a glob to `node --test`). All 265 tests should pass. `npm run test:coverage` adds Node's coverage report; the crypto core is fully covered apart from three unreachable length checks. Shared test helpers (vector loading, hex/base64, `replay` for injecting recorded randomness) are in `test/helpers.js`.
 
 You only need the test-vector generator when changing what the vectors cover. It needs `uv`; see `tools/gen-vectors/README.md`. The generated files in `test/vectors/` are committed, so tests don't need Python.
 
@@ -27,7 +27,7 @@ You only need the test-vector generator when changing what the vectors cover. It
 | `src/omemo/bridge.js` | Everything that touches Thunderbird: the hooks on `XMPPConversationPrototype` and `XMPPAccountPrototype`, the per-account lifecycle, encrypt on send, decrypt on receive (carbons included), the padlock and lock button, the `/omemo` command, trust decisions per recipient, stale-device filtering, the 6-hourly upkeep timer. Written against injected Thunderbird objects so it runs in Node against `test/fake-thunderbird.js` |
 | `src/omemo/account.js` | One account's OMEMO over PEP: load or create the key store, publish device lists and bundles, handle device list pushes, fetch contacts' devices and bundles, rotate the signed prekey (`maintain()`), remove our own old devices |
 | `src/omemo/store.js` | The per-account key store: device id, identity key, per-namespace signed prekey (plus replaced ones kept 30 days) and 100 pre keys, sessions, device lists (`firstSeen`, labels), encryption choices, trust per identity key, each device's last key and last message time. Strict JSON load; newer fields are optional so older stores load |
-| `src/omemo/persist.js` | Batched, non-overlapping, atomic saves to `<profile>/omemo/<jid>.json` |
+| `src/omemo/persist.js` | Batched, non-overlapping, atomic saves to `<profile>/omemo/<jid>.json` (unusual characters percent-encoded; 0.1.0's names are migrated) |
 | `src/omemo/messages.js` | Encrypt one body for many devices; decrypt with session start/reuse; `OmemoError` codes |
 | `src/omemo/trust.js` | "Blind trust before verification" (Conversations' model): decides per device key whether to encrypt to it, and what to tell the user |
 | `src/omemo/fingerprint.js` | Fingerprints in Conversations' hex groups, and the `xmpp:` URI for QR verification |
@@ -50,7 +50,9 @@ A suggested reading order, from the protocol outward:
 
 Properties worth checking:
 
-- **No plaintext fallback:** in a conversation that should be encrypted, a message that can't be encrypted is not sent at all (`sendEncrypted` throws; `dispatchMessage` shows an error).
+- **No plaintext fallback:** in a conversation that should be encrypted, a message that can't be encrypted is not sent at all (`sendEncrypted` throws; `dispatchMessage` shows an error). When it can't be told whether a chat is encrypted (OMEMO still starting, a failed device lookup), the message waits or is blocked, never sent in plaintext.
+- **Current device lists:** a contact's saved device list is fetched again before use in each connection, and hourly, so a device removed while we were offline gets nothing.
+- **Durable saves:** ratchet changes are saved half a second later in a batch; a disconnect writes at once, and uninstall and Thunderbird's shutdown (a shutdown blocker) wait for every write to finish.
 - **The padlock is only on what was decrypted:** `writeMessage` is flagged `isEncrypted` only while Thunderbird handles a message we decrypted from a trusted device (the `markEncrypted` counter in `bridge.js`).
 - **Decryption is transactional:** ratchet state commits only after the MAC verifies; forged or replayed messages can't change session state.
 - **Trust:** after a contact has one verified device, a new or changed key is held back until the user decides; distrusted keys are never used.

@@ -14,7 +14,7 @@ import assert from "node:assert/strict";
 import * as keys from "../src/crypto/keys.js";
 import * as f from "../src/omemo/formats.js";
 import * as pep from "../src/omemo/pep.js";
-import { createOmemoAccount, DEVICE_LABEL } from "../src/omemo/account.js";
+import { createOmemoAccount, DEVICE_LABEL, DEVICE_LIST_MAX_AGE_MS } from "../src/omemo/account.js";
 import { encryptMessage, decryptMessage } from "../src/omemo/messages.js";
 import { parseXml, serialize } from "../src/omemo/xml.js";
 import { createFakePepServer } from "./fake-pep.js";
@@ -203,6 +203,101 @@ test("getDevices uses the store unless asked to refresh", async () => {
     f.buildDeviceList("twomemo", [...first, { id: 777, label: null }]));
   assert.deepEqual(await alice.getDevices("twomemo", "bob@example.org"), first, "cached");
   assert.deepEqual((await alice.getDevices("twomemo", "bob@example.org", { refresh: true })).map((d) => d.id), [bob.store.deviceId, 777]);
+});
+
+const setBobsList = (server, ids) => server.put("bob@example.org", "urn:xmpp:omemo:2:devices", "current",
+  f.buildDeviceList("twomemo", ids.map((id) => ({ id, label: null }))));
+
+test("a device the contact removed while we were offline is gone after reconnect, push or no push", async () => {
+  const server = createFakePepServer();
+  const file = memoryFile();
+  const alice = account(server, "alice@example.org", file);
+  const bob = account(server, "bob@example.org");
+  await alice.start();
+  await bob.start();
+  setBobsList(server, [bob.store.deviceId, 777]);
+  assert.deepEqual((await alice.getDevices("twomemo", "bob@example.org")).map((d) => d.id), [bob.store.deviceId, 777]);
+  await alice.stop();
+
+  // Offline: Bob drops device 777 (lost phone). No notification reaches us.
+  setBobsList(server, [bob.store.deviceId]);
+  const again = account(server, "alice@example.org", file);
+  await again.start();
+  assert.deepEqual(again.store.devices("twomemo", "bob@example.org").map((d) => d.id), [bob.store.deviceId, 777], "the saved list is stale");
+  assert.deepEqual((await again.getDevices("twomemo", "bob@example.org")).map((d) => d.id), [bob.store.deviceId], "fetched again before use");
+});
+
+test("a list pushed in this connection is used as is; a stale one that can't be fetched throws", async () => {
+  const server = createFakePepServer();
+  const file = memoryFile();
+  const alice = account(server, "alice@example.org", file);
+  const bob = account(server, "bob@example.org");
+  await alice.start();
+  await bob.start();
+  await alice.getDevices("twomemo", "bob@example.org");
+  await alice.stop();
+
+  let failBob = false;
+  const connect = server.connect("alice@example.org");
+  const again = createOmemoAccount({
+    jid: "alice@example.org/Thunderbird",
+    sendIq: (iq) => (failBob && iq.attributes.to === "bob@example.org" ? Promise.reject(new Error("timed out")) : connect(iq)),
+    fileAccess: file,
+    saverOptions: { setTimer: () => 0, clearTimer: () => {} },
+  });
+  await again.start();
+  failBob = true;
+  await assert.rejects(again.getDevices("twomemo", "bob@example.org"), /timed out/, "no falling back to the saved list");
+  // A push counts as current.
+  await again.handleEvent({ from: "bob@example.org", node: "urn:xmpp:omemo:2:devices",
+    items: [{ id: "current", payload: f.buildDeviceList("twomemo", [{ id: bob.store.deviceId }]) }] });
+  assert.deepEqual((await again.getDevices("twomemo", "bob@example.org")).map((d) => d.id), [bob.store.deviceId]);
+});
+
+test("a contact's list is fetched again once it's DEVICE_LIST_MAX_AGE_MS old", async () => {
+  const server = createFakePepServer();
+  let time = 1_000_000;
+  const alice = createOmemoAccount({
+    jid: "alice@example.org/Thunderbird",
+    sendIq: server.connect("alice@example.org"),
+    fileAccess: memoryFile(),
+    now: () => time,
+    saverOptions: { setTimer: () => 0, clearTimer: () => {} },
+  });
+  const bob = account(server, "bob@example.org");
+  await alice.start();
+  await bob.start();
+  await alice.getDevices("twomemo", "bob@example.org");
+  setBobsList(server, [bob.store.deviceId, 777]);
+  time += DEVICE_LIST_MAX_AGE_MS - 1;
+  assert.equal((await alice.getDevices("twomemo", "bob@example.org")).length, 1, "still fresh");
+  time += 1;
+  assert.equal((await alice.getDevices("twomemo", "bob@example.org")).length, 2, "fetched again");
+});
+
+test("twomemo: a bundle with another device's id is never taken for the one asked for", async () => {
+  const server = createFakePepServer();
+  // A server that ignores the item id asked for and returns every item.
+  const connect = server.connect("alice@example.org");
+  const alice = createOmemoAccount({
+    jid: "alice@example.org/Thunderbird",
+    sendIq: (iq) => {
+      const items = iq.children.find((c) => typeof c !== "string" && c.name === "pubsub")
+        ?.children.find((c) => typeof c !== "string" && c.name === "items");
+      if (items) {
+        items.children = [];
+      }
+      return connect(iq);
+    },
+    fileAccess: memoryFile(),
+    saverOptions: { setTimer: () => 0, clearTimer: () => {} },
+  });
+  const bob = account(server, "bob@example.org");
+  await alice.start();
+  await bob.start();
+  assert.equal(await alice.getBundle("twomemo", "bob@example.org", 12345), null, "not Bob's other device's bundle");
+  const real = await alice.getBundle("twomemo", "bob@example.org", bob.store.deviceId);
+  assert.equal(real.preKeys.length, 100);
 });
 
 test("a bundle whose signature doesn't verify is refused", async () => {

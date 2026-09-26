@@ -47,13 +47,20 @@ async function setup(jids = [T1, T2], { allowlist = [T1, T2], optIn = false, mod
   const server = createFakePepServer();
   const tb = createFakeThunderbird(server);
   const lines = [];
+  // One file per account, kept across reconnects.
+  const files = new Map();
   const bridge = installBridge({
     ...tb,
     now,
     setTimer,
     clearTimer: clearTimeout,
     appName: "Thunderbird",
-    fileAccessFor: memoryFile,
+    fileAccessFor: (jid) => {
+      if (!files.has(jid)) {
+        files.set(jid, memoryFile());
+      }
+      return files.get(jid);
+    },
     log: (l) => lines.push(l),
     encryptionAllowlist: allowlist,
     optIn,
@@ -66,7 +73,7 @@ async function setup(jids = [T1, T2], { allowlist = [T1, T2], optIn = false, mod
     accounts[jid].onConnection();
   }
   await until(() => jids.every((j) => lines.some((l) => l.startsWith(`OMEMO ready for ${j}`))), "OMEMO to start");
-  return { server, tb, lines, bridge, accounts };
+  return { server, tb, lines, bridge, accounts, files };
 }
 
 const bodies = (account) => account.received.map((r) => r.body);
@@ -420,6 +427,119 @@ test("mode 'always': a contact without OMEMO isn't messaged until /omemo off; th
   sms.dispatchMessage("now allowed");
   await until(() => plainSends(tb).length === 1, "the plaintext send");
   assert.deepEqual(plainSends(tb), ["now allowed"]);
+});
+
+/**
+ * Makes the fake server answer requests to `jid`'s nodes whose name
+ * matches `nodePattern` with a timeout error. Returns a function that stops it.
+ */
+function failLookups(server, jid, nodePattern) {
+  const connect = server.connect;
+  server.connect = (from) => {
+    const send = connect(from);
+    return (iq) => {
+      const text = serialize(iq);
+      if (text.includes(`to="${jid}"`) && nodePattern.test(text)) {
+        return Promise.resolve(parseXml(`<iq xmlns="jabber:client" type="error"><error type="wait">` +
+          `<remote-server-timeout xmlns="urn:ietf:params:xml:ns:xmpp-stanzas"/></error></iq>`));
+      }
+      return send(iq);
+    };
+  };
+  return () => {
+    server.connect = connect;
+  };
+}
+
+const errors = (conv) => conv.shown.filter((m) => m.flags.error).map((m) => m.text);
+
+test("mode 'available': a failed device lookup blocks the message instead of sending plaintext, and isn't remembered", async () => {
+  const { tb, accounts, server, bridge } = await setup([T1, CAROL], { allowlist: [], mode: "available" });
+  const conv = tb.makeConversation(accounts[T1], CAROL);
+
+  // Both namespaces time out.
+  let stop = failLookups(server, CAROL, /devicelist|omemo:2:devices/);
+  conv.dispatchMessage("first");
+  await until(() => errors(conv).length === 1, "the first error");
+  assert.match(errors(conv)[0], /not sent.*couldn't check whether carol@example\.org uses OMEMO \(PEP request failed: remote-server-timeout\)\. Try again in a moment\./);
+  bridge.runCommand(conv, "status");
+  await until(() => /couldn't be looked up just now/.test(lastSaid(conv)), "the status");
+  stop();
+
+  // Only oldmemo fails, while twomemo would have answered: still not plaintext.
+  stop = failLookups(server, CAROL, /devicelist/);
+  conv.dispatchMessage("second");
+  await until(() => errors(conv).length === 2, "the second error");
+  stop();
+
+  // The lookup works again: not remembered as "no OMEMO", so it's encrypted.
+  conv.dispatchMessage("third");
+  await until(() => accounts[CAROL].received.length === 1, "Carol's copy");
+  assert.deepEqual(bodies(accounts[CAROL]), ["third"]);
+  assert.deepEqual(plainSends(tb), [], "nothing ever went out in plaintext");
+});
+
+test("a message sent while OMEMO starts waits for it: an encrypted chat stays encrypted", async () => {
+  const { tb, accounts, bridge } = await setup([T1, CAROL], { allowlist: [], mode: "manual" });
+  const conv = tb.makeConversation(accounts[T1], CAROL);
+  bridge.runCommand(conv, "on");
+  await bridge.saveAll();
+  // Reconnect, and send before the key store (which has the "on") is loaded.
+  accounts[T1]._disconnect();
+  accounts[T1].onConnection();
+  assert.equal(bridge.accounts.get(accounts[T1]).store, null, "not loaded yet");
+  conv.dispatchMessage("right away");
+  await until(() => accounts[CAROL].received.length === 1, "Carol's copy");
+  assert.deepEqual(bodies(accounts[CAROL]), ["right away"]);
+  assert.deepEqual(plainSends(tb), []);
+});
+
+test("mode 'available': a message sent while OMEMO starts is encrypted for a contact with OMEMO", async () => {
+  const { tb, accounts, bridge } = await setup([T1, CAROL], { allowlist: [], mode: "available" });
+  const conv = tb.makeConversation(accounts[T1], CAROL);
+  accounts[T1]._disconnect();
+  accounts[T1].onConnection();
+  assert.equal(bridge.accounts.get(accounts[T1]).store, null, "not loaded yet");
+  conv.dispatchMessage("early");
+  await until(() => accounts[CAROL].received.length === 1, "Carol's copy");
+  assert.deepEqual(bodies(accounts[CAROL]), ["early"]);
+  assert.deepEqual(plainSends(tb), []);
+});
+
+test("if OMEMO fails to start, messages aren't sent in plaintext; the chat says why", async () => {
+  const { tb, accounts, files } = await setup([T1, CAROL], { allowlist: [], mode: "manual" });
+  const conv = tb.makeConversation(accounts[T1], CAROL);
+  accounts[T1]._disconnect();
+  files.set(T1, { read: async () => { throw new Error("unreadable"); }, write: async () => {} });
+  accounts[T1].onConnection();
+  conv.dispatchMessage("hello");
+  await until(() => errors(conv).length === 1, "the error");
+  assert.match(errors(conv)[0], /OMEMO isn't ready for this account yet, so it can't tell whether this chat is encrypted\. Try again in a moment\./);
+  assert.deepEqual(plainSends(tb), []);
+});
+
+test("a device the contact removed while we were offline gets no key in the next message", async () => {
+  const { tb, accounts, bridge, server } = await setup([T1, CAROL], { allowlist: [], mode: "always" });
+  const conv = tb.makeConversation(accounts[T1], CAROL);
+  const carolDevice = bridge.accounts.get(accounts[CAROL]).store.deviceId;
+  const lostPhone = createStore();
+  const devicesNode = f.deviceListLocation("twomemo").node;
+  server.put(CAROL, devicesNode, "current", f.buildDeviceList("twomemo", [{ id: carolDevice }, { id: lostPhone.deviceId }]));
+  server.put(CAROL, f.bundleLocation("twomemo", lostPhone.deviceId).node, String(lostPhone.deviceId),
+    f.buildBundle("twomemo", lostPhone.bundle("twomemo")));
+  conv.dispatchMessage("before");
+  await until(() => accounts[CAROL].received.length === 1, "the first message");
+  const keysTo = (xml) => [...xml.matchAll(/<key rid="(\d+)"/g)].map((m) => Number(m[1]));
+  assert.ok(keysTo(accounts[T1].sent.filter((x) => x.startsWith("<message")).at(-1)).includes(lostPhone.deviceId));
+
+  // Offline: Carol removes the lost phone; no push reaches test1.
+  accounts[T1]._disconnect();
+  server.put(CAROL, devicesNode, "current", f.buildDeviceList("twomemo", [{ id: carolDevice }]));
+  accounts[T1].onConnection();
+  await until(() => bridge.accounts.get(accounts[T1])?.store, "OMEMO to start again");
+  conv.dispatchMessage("after");
+  await until(() => accounts[CAROL].received.length === 2, "the second message");
+  assert.equal(keysTo(accounts[T1].sent.filter((x) => x.startsWith("<message")).at(-1)).includes(lostPhone.deviceId), false);
 });
 
 test("mode 'manual' with /omemo on, off and default", async () => {

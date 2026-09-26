@@ -198,6 +198,59 @@ test("disconnect saves the keys and still runs Thunderbird's own _disconnect", a
   assert.match(lines.filter((l) => /OMEMO ready/.test(l)).at(-1), new RegExp(`device ${omemo.store.deviceId}`));
 });
 
+test("saveAll and uninstall wait for the save a disconnect started", async () => {
+  const { tb, lines, files, bridge } = setup();
+  let text = null;
+  let slow = false;
+  let release;
+  const gate = new Promise((r) => {
+    release = r;
+  });
+  files.set("alice@example.org", {
+    read: async () => text,
+    write: async (t) => {
+      if (slow) {
+        await gate; // a disk that takes its time
+      }
+      text = t;
+    },
+  });
+  const account = tb.makeAccount("alice@example.org");
+  account.onConnection();
+  await waitFor(lines, /OMEMO ready/);
+  slow = true;
+  bridge.accounts.get(account).store.removePreKey("twomemo", 1); // e.g. a message just decrypted
+  account._disconnect(); // Thunderbird doesn't wait for the save
+  let saved = false;
+  let uninstalled = false;
+  bridge.saveAll().then(() => {
+    saved = true;
+  });
+  bridge.uninstall().then(() => {
+    uninstalled = true;
+  });
+  await new Promise((r) => setTimeout(r, 20));
+  assert.equal(saved, false, "saveAll waits for the write");
+  assert.equal(uninstalled, false, "so does uninstall");
+  release();
+  for (let i = 0; i < 200 && !(saved && uninstalled); i++) {
+    await new Promise((r) => setTimeout(r, 5));
+  }
+  assert.ok(saved && uninstalled);
+  assert.equal(JSON.parse(text).namespaces.twomemo.preKeys.some(([id]) => id === 1), false, "the change is on disk");
+});
+
+test("saveAll writes connected accounts' pending changes at once", async () => {
+  const { tb, lines, files, bridge } = setup();
+  const account = tb.makeAccount("alice@example.org");
+  account.onConnection();
+  await waitFor(lines, /OMEMO ready/);
+  bridge.accounts.get(account).store.removePreKey("twomemo", 1); // saved 500 ms later on its own
+  await bridge.saveAll();
+  const saved = JSON.parse(files.get("alice@example.org").text);
+  assert.equal(saved.namespaces.twomemo.preKeys.some(([id]) => id === 1), false);
+});
+
 test("accounts already connected at install get OMEMO too", async () => {
   const { lines } = setup({ connected: ["carol@example.org"] });
   await waitFor(lines, /OMEMO ready for carol@example\.org/);

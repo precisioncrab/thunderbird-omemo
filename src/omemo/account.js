@@ -34,6 +34,14 @@ import * as formats from "./formats.js";
 export const DEVICE_LABEL = "Thunderbird";
 
 /**
+ * How long a contact's device list, fetched or pushed during this
+ * connection, is used without fetching it again. A list saved from an
+ * earlier connection is always fetched again before use: a device removed
+ * while we were offline must not keep getting our messages.
+ */
+export const DEVICE_LIST_MAX_AGE_MS = 60 * 60 * 1000;
+
+/**
  * @param {object} options
  * @param {string} options.jid - the account's JID.
  * @param {(iq: object) => Promise<object>} options.sendIq - PEP transport.
@@ -52,6 +60,13 @@ export function createOmemoAccount({ jid, sendIq, fileAccess, log = () => {}, ra
     ...saverOptions,
   });
   const storeOptions = { onChange: () => saver.schedule(), ...(random ? { random } : {}), ...(now ? { now } : {}) };
+  const clock = now ?? Date.now;
+  // When each contact's device list was last fetched or pushed in this
+  // connection: "<ns> <jid>" -> time. Empty on every connect, since a new
+  // account object is made each time.
+  const listFetchedAt = new Map();
+  const markFresh = (ns, jid) => listFetchedAt.set(`${ns} ${jid}`, clock());
+  const isFresh = (ns, jid) => clock() - (listFetchedAt.get(`${ns} ${jid}`) ?? -Infinity) < DEVICE_LIST_MAX_AGE_MS;
 
   /** Our published device list for a namespace, or [] if there is none. */
   async function fetchDeviceList(ns, who) {
@@ -172,6 +187,7 @@ export function createOmemoAccount({ jid, sendIq, fileAccess, log = () => {}, ra
       }
       if (from !== ourJid) {
         store.setDevices(ns, from, devices);
+        markFresh(ns, from);
         return true;
       }
       const updated = withOurDevice(ns, devices);
@@ -189,19 +205,22 @@ export function createOmemoAccount({ jid, sendIq, fileAccess, log = () => {}, ra
     },
 
     /**
-     * A contact's devices (docs/TASKS.md 3.9): from the store, or fetched
-     * when we have none yet or `refresh` is set.
+     * A contact's devices (docs/TASKS.md 3.9): from the store if the list
+     * was fetched or pushed in this connection within
+     * DEVICE_LIST_MAX_AGE_MS, otherwise (or with `refresh`) fetched again.
      *
      * @returns {Promise<{ id: number, label: string|null }[]>}
+     * @throws if the list has to be fetched and can't be (never falls back
+     *   to a list that may be out of date).
      */
     async getDevices(ns, who, { refresh = false } = {}) {
       const target = bareJid(who);
-      const known = store.devices(ns, target);
-      if (known.length && !refresh) {
-        return known.map(({ id, label }) => ({ id, label }));
+      if (!refresh && isFresh(ns, target)) {
+        return store.devices(ns, target).map(({ id, label }) => ({ id, label }));
       }
       const devices = await fetchDeviceList(ns, target);
       store.setDevices(ns, target, devices);
+      markFresh(ns, target);
       return devices;
     },
 
@@ -215,7 +234,12 @@ export function createOmemoAccount({ jid, sendIq, fileAccess, log = () => {}, ra
     async getBundle(ns, who, deviceId) {
       const { node, itemId } = formats.bundleLocation(ns, deviceId);
       const items = await pep.fetchItems(bareJid(who), node, ns === "twomemo" ? itemId : undefined);
-      const item = items.find((i) => i.id === itemId) ?? items.at(-1);
+      // twomemo keeps every device's bundle on one node, so only the item
+      // with this device's id will do. An oldmemo node holds one device's
+      // bundle; take the newest item if "current" is missing.
+      const item = ns === "twomemo"
+        ? items.find((i) => i.id === itemId)
+        : items.find((i) => i.id === itemId) ?? items.at(-1);
       return item?.payload ? formats.parseBundle(ns, item.payload) : null;
     },
 
@@ -274,7 +298,7 @@ export function createOmemoAccount({ jid, sendIq, fileAccess, log = () => {}, ra
       await publishBundle(ns);
     },
 
-    /** Writes any pending store change (on disconnect or shutdown). */
+    /** Writes any pending store change now (on disconnect or shutdown). */
     async stop() {
       if (store) {
         await saver.flush();

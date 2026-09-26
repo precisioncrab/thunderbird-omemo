@@ -88,26 +88,63 @@ export function createSaver(access, getText, { delayMs = 500, onError = () => {}
   };
 }
 
-/**
- * The file name for an account's store: its bare JID, lowercased, with
- * anything unusual for a file name replaced.
- *
- * @param {string} jid
- * @returns {string}
- */
-export function storeFileName(jid) {
+function bareOf(jid) {
   const slash = jid.indexOf("/");
   const bare = (slash < 0 ? jid : jid.slice(0, slash)).toLowerCase();
   if (!bare) {
     throw new Error("A store needs the account's JID.");
   }
-  return `${bare.replace(/[^a-z0-9@._-]/g, "_")}.json`;
+  return bare;
+}
+
+/**
+ * The file name for an account's store: its bare JID, lowercased, with
+ * every character other than a-z 0-9 @ . _ - percent-encoded (as UTF-8).
+ * Different JIDs always get different names, even on a file system that
+ * ignores case: the hex is always uppercase and a literal % is encoded too.
+ *
+ * @param {string} jid
+ * @returns {string}
+ */
+export function storeFileName(jid) {
+  let name = "";
+  for (const ch of bareOf(jid)) {
+    name += /[a-z0-9@._-]/.test(ch)
+      ? ch
+      : [...new TextEncoder().encode(ch)].map((b) => `%${b.toString(16).toUpperCase().padStart(2, "0")}`).join("");
+  }
+  return `${name}.json`;
+}
+
+/**
+ * The file name 0.1.0 and earlier used, which replaced unusual characters
+ * with "_", so different JIDs could share one (alice+work and alice_work).
+ *
+ * @param {string} jid
+ * @returns {string}
+ */
+export function legacyStoreFileName(jid) {
+  return `${bareOf(jid).replace(/[^a-z0-9@._-]/g, "_")}.json`;
+}
+
+/** The JIDs whose own device list, in a saved store, has the store's device id. */
+function ownersOf(data) {
+  const entries = Array.isArray(data?.devices) ? data.devices : [];
+  return new Set(entries
+    .filter((e) => typeof e?.jid === "string" && e.jid && Array.isArray(e.devices) && e.devices.some((d) => d?.id === data.deviceId))
+    .map((e) => e.jid));
 }
 
 /**
  * Thunderbird file access for one account's store, in <profile>/omemo/.
  * The file holds private keys, so on systems with Unix permissions it is
  * made readable by the user only.
+ *
+ * A store saved under its legacy name (legacyStoreFileName) is moved to the
+ * new name on first read, if it's this account's: our own device list in it
+ * has its device id, and no JID whose name didn't change (the other account
+ * of a colliding pair) claims it too. Otherwise it's left where it is, and
+ * this account starts with new keys.
  *
  * @param {string} jid - the account's JID.
  * @param {object} [globals] - IOUtils and PathUtils; defaults to the
@@ -117,13 +154,30 @@ export function storeFileName(jid) {
 export function geckoFileAccess(jid, { IOUtils = globalThis.IOUtils, PathUtils = globalThis.PathUtils } = {}) {
   const dir = PathUtils.join(PathUtils.profileDir, "omemo");
   const path = PathUtils.join(dir, storeFileName(jid));
+  const legacyName = legacyStoreFileName(jid);
+  const legacyPath = PathUtils.join(dir, legacyName);
   return {
     path,
     async read() {
-      if (!(await IOUtils.exists(path))) {
+      if (await IOUtils.exists(path)) {
+        return IOUtils.readUTF8(path);
+      }
+      if (legacyPath === path || !(await IOUtils.exists(legacyPath))) {
         return null;
       }
-      return IOUtils.readUTF8(path);
+      const text = await IOUtils.readUTF8(legacyPath);
+      let owners;
+      try {
+        owners = ownersOf(JSON.parse(text));
+      } catch (e) {
+        throw new Error(`The key store ${legacyName} couldn't be read: ${e?.message ?? e}`);
+      }
+      const bare = bareOf(jid);
+      if (!owners.has(bare) || [...owners].some((j) => j !== bare && storeFileName(j) === legacyName)) {
+        return null;
+      }
+      await IOUtils.move(legacyPath, path, { noOverwrite: true });
+      return text;
     },
     async write(text) {
       await IOUtils.makeDirectory(dir, { ignoreExisting: true });

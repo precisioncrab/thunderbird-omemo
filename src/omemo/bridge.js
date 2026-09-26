@@ -33,7 +33,11 @@
  * OMEMO is decrypted in every mode. `encryptionAllowlist` (tests, and the
  * first test builds) forces encryption between two listed accounts; with no
  * mode set, only that list applies. In an encrypted conversation a message
- * that can't be encrypted is not sent at all, never sent in plaintext.
+ * that can't be encrypted is not sent at all, never sent in plaintext. The
+ * same goes when it can't be told whether a chat is encrypted: a message
+ * sent while the account's OMEMO is starting waits for it, and in mode
+ * "available" a failed device lookup blocks the message (retryable) rather
+ * than counting as "no OMEMO".
  *
  * Thunderbird's chat UI shows a conversation's encryptionState (the lock
  * button and "Encryption Status"), which the bridge provides for XMPP 1:1
@@ -110,7 +114,8 @@ const DECRYPT_NOTICES = {
  *   - Ci.prplIConversation's ENCRYPTION_* values; without them the
  *   conversation encryption API isn't provided.
  * @returns {{ accounts: Map<object, object>, runCommand: (conversation: object, args: string) => boolean,
- *   updateSettings: (settings: { mode: string|null }) => void, uninstall: () => Promise<void> }}
+ *   updateSettings: (settings: { mode: string|null }) => void, saveAll: () => Promise<void>,
+ *   uninstall: () => Promise<void> }}
  */
 export function installBridge(tb) {
   const { xmppBase, Stanza, SupportedFeatures, setTimer, clearTimer, appName, fileAccessFor, log } = tb;
@@ -157,6 +162,11 @@ export function installBridge(tb) {
 
   /** @type {Map<object, ReturnType<typeof createOmemoAccount>>} */
   const accounts = new Map();
+  // Settles when each account's start() has finished or failed.
+  const started = new Map();
+  // Saves still running for accounts that disconnected; uninstall and
+  // saveAll wait for them.
+  const pendingSaves = new Set();
   // Each account's upkeep timer (signed prekey rotation), while connected.
   const maintenanceTimers = new Map();
 
@@ -222,6 +232,7 @@ export function installBridge(tb) {
       .catch((e) => {
         log(`ERROR: starting OMEMO for ${jid} failed: ${e?.message ?? e}`);
       });
+    started.set(account, startQueue);
   }
 
   function stopAccount(account) {
@@ -230,11 +241,26 @@ export function installBridge(tb) {
       return Promise.resolve();
     }
     accounts.delete(account);
+    started.delete(account);
     if (maintenanceTimers.has(account)) {
       clearTimer(maintenanceTimers.get(account));
       maintenanceTimers.delete(account);
     }
-    return omemo.stop().catch((e) => log(`ERROR: saving OMEMO keys for ${bareJidOf(account)} failed: ${e?.message ?? e}`));
+    const saving = omemo.stop()
+      .catch((e) => log(`ERROR: saving OMEMO keys for ${bareJidOf(account)} failed: ${e?.message ?? e}`))
+      .finally(() => pendingSaves.delete(saving));
+    pendingSaves.add(saving);
+    return saving;
+  }
+
+  /**
+   * Writes every account's pending key store changes now, and waits for the
+   * saves of accounts that just disconnected (Thunderbird's shutdown).
+   */
+  async function saveAll() {
+    const saves = [...accounts].map(([account, omemo]) =>
+      omemo.stop().catch((e) => log(`ERROR: saving OMEMO keys for ${bareJidOf(account)} failed: ${e?.message ?? e}`)));
+    await Promise.all([...saves, ...pendingSaves]);
   }
 
   const bare = (jid) => {
@@ -246,8 +272,10 @@ export function installBridge(tb) {
   /**
    * Whether this account's conversation with peerJid is encrypted (4.1).
    *
-   * @returns {"yes"|"no"|"if-devices"} "if-devices": mode "available" and no
-   *   choice for this contact, so it depends on whether they have OMEMO.
+   * @returns {"yes"|"no"|"if-devices"|"not-ready"} "if-devices": mode
+   *   "available" and no choice for this contact, so it depends on whether
+   *   they have OMEMO. "not-ready": the key store, which holds the
+   *   per-contact choice, isn't loaded yet.
    */
   function wantsEncryption(account, peerJid) {
     const ourJid = bareJidOf(account);
@@ -260,7 +288,11 @@ export function installBridge(tb) {
     if (mode === null) {
       return "no";
     }
-    const choice = accounts.get(account)?.store?.encryptionChoice(peerJid) ?? null;
+    const store = accounts.get(account)?.store;
+    if (!store) {
+      return "not-ready";
+    }
+    const choice = store.encryptionChoice(peerJid);
     if (choice === "on") {
       return "yes";
     }
@@ -284,32 +316,38 @@ export function installBridge(tb) {
 
   /**
    * Whether the contact has OMEMO devices, fetching their lists if we don't
-   * know. A contact without any is remembered for a while.
+   * know. A contact whose lists both came back empty is remembered for a
+   * while; a failed lookup is not remembered.
    *
-   * @returns {Promise<boolean>}
+   * @returns {Promise<{ found: boolean|null, error: string|null }>} found:
+   *   null if it couldn't be told (OMEMO not ready, or a lookup failed).
    */
   async function lookUpDevices(account, peerJid) {
     if (knownToHaveDevices(account, peerJid)) {
-      return true;
+      return { found: true, error: null };
     }
     const key = `${bareJidOf(account)} ${peerJid}`;
     if ((noDevicesUntil.get(key) ?? 0) > Date.now()) {
-      return false;
+      return { found: false, error: null };
     }
     const omemo = accounts.get(account);
-    let found = false;
+    if (!omemo?.store) {
+      return { found: null, error: "OMEMO isn't ready for this account yet" };
+    }
+    let found;
     try {
       const lists = await Promise.all([omemo.getDevices("twomemo", peerJid), omemo.getDevices("oldmemo", peerJid)]);
       found = lists.some((l) => l.length);
     } catch (e) {
       log(`looking up ${peerJid}'s OMEMO devices failed: ${e?.message ?? e}`);
+      return { found: null, error: String(e?.message ?? e) };
     }
     if (found) {
       noDevicesUntil.delete(key);
     } else {
       noDevicesUntil.set(key, Date.now() + NO_DEVICES_RECHECK_MS);
     }
-    return found;
+    return { found, error: null };
   }
 
   /** Tells Thunderbird's UI to redraw a conversation's encryption state. */
@@ -356,8 +394,10 @@ export function installBridge(tb) {
     if (mode !== null && !conversation._omemoLookedUp) {
       // Look the contact's devices up once; redraw if they have some.
       conversation._omemoLookedUp = true;
-      lookUpDevices(account, peerJid).then((found) => {
-        if (found) {
+      lookUpDevices(account, peerJid).then(({ found }) => {
+        if (found === null) {
+          conversation._omemoLookedUp = false; // try again next time
+        } else if (found) {
           notifyConversation(conversation);
         }
       });
@@ -647,7 +687,25 @@ export function installBridge(tb) {
     // with plaintext ones in between once the queue exists.
     this._omemoQueue = (this._omemoQueue ?? Promise.resolve())
       .then(async () => {
-        const encrypt = wants === "yes" || (wants === "if-devices" && await lookUpDevices(this._account, bare(this.to)));
+        const account = this._account;
+        const peerJid = bare(this.to);
+        let decision = wants;
+        if (decision === "not-ready") {
+          // Sent while OMEMO starts: wait for it rather than guess.
+          await started.get(account);
+          decision = wantsEncryption(account, peerJid);
+          if (decision === "not-ready") {
+            throw new Error("OMEMO isn't ready for this account yet, so it can't tell whether this chat is encrypted. Try again in a moment.");
+          }
+        }
+        let encrypt = decision === "yes";
+        if (decision === "if-devices") {
+          const { found, error } = await lookUpDevices(account, peerJid);
+          if (found === null) {
+            throw new Error(`couldn't check whether ${peerJid} uses OMEMO (${error}). Try again in a moment.`);
+          }
+          encrypt = found;
+        }
         if (!encrypt) {
           originals.get("dispatchMessage").call(this, aMsg, aAction);
           return;
@@ -881,7 +939,7 @@ export function installBridge(tb) {
       return true;
     }
     // Status, once we know the contact's devices.
-    lookUpDevices(account, peerJid).then(() => {
+    lookUpDevices(account, peerJid).then(({ found, error }) => {
       const store = omemo.store;
       const ourJid = bareJidOf(account);
       const wants = wantsEncryption(account, peerJid);
@@ -891,7 +949,9 @@ export function installBridge(tb) {
         `This Thunderbird: device ${store.deviceId}, fingerprint ${formatFingerprint(store.identityKeyPair().publicKey.curve25519)}`,
       ];
       const contact = deviceLines(store, peerJid);
-      lines.push(contact.length ? `${peerJid}'s devices:` : `${peerJid} has no OMEMO devices.`, ...contact);
+      lines.push(contact.length ? `${peerJid}'s devices:`
+        : found === null ? `${peerJid}'s OMEMO devices couldn't be looked up just now (${error}).`
+          : `${peerJid} has no OMEMO devices.`, ...contact);
       const own = deviceLines(store, ourJid);
       if (own.length) {
         // Not "(jid):", which Thunderbird turns into a frowning smiley.
@@ -1063,6 +1123,7 @@ export function installBridge(tb) {
     runCommand,
     updateSettings,
     ownDevices,
+    saveAll,
     async uninstall() {
       for (const [proto, name] of targets) {
         proto[name] = originals.get(name);
@@ -1081,6 +1142,7 @@ export function installBridge(tb) {
         }
       }
       await Promise.all([...accounts.keys()].map((a) => stopAccount(a)));
+      await Promise.all(pendingSaves);
       maintenanceTimers.clear();
     },
   };

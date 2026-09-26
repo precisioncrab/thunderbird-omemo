@@ -95,6 +95,28 @@ function safely(what, fn) {
   }
 }
 
+// Thunderbird waits at shutdown until every key store is saved: writes are
+// batched a moment after each change, and a lost ratchet change breaks the
+// next message. IOUtils.profileBeforeChange is the shutdown phase meant for
+// last writes (JSONFile uses it); AsyncShutdown's is the same phase.
+let _saveBlocker = null;
+
+function addSaveBlocker(bridge) {
+  safely("registering the save at shutdown", () => {
+    const client = (typeof IOUtils !== "undefined" && IOUtils.profileBeforeChange)
+      || ChromeUtils.importESModule("resource://gre/modules/AsyncShutdown.sys.mjs").AsyncShutdown.profileBeforeChange;
+    const condition = () => bridge.saveAll();
+    client.addBlocker("OMEMO: saving the key stores", condition);
+    _saveBlocker = { client, condition };
+  });
+}
+
+function removeSaveBlocker(blocker) {
+  if (blocker) {
+    safely("removing the save at shutdown", () => blocker.client.removeBlocker(blocker.condition));
+  }
+}
+
 function resourceHandler() {
   return Cc["@mozilla.org/network/protocol;1?name=resource"].getService(Ci.nsISubstitutingProtocolHandler);
 }
@@ -199,6 +221,7 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
           if (!_bridge) {
             throw new Error("[omemo] The hooks didn't install; see the [omemo] ERROR line.");
           }
+          addSaveBlocker(_bridge);
           safely("registering the /omemo command", () => {
             const { IMServices } = ChromeUtils.importESModule(IM_SERVICES_URL);
             IMServices.cmd.registerCommand({
@@ -228,8 +251,14 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
 
         async uninstall() {
           const bridge = _bridge;
+          const blocker = _saveBlocker;
           _bridge = null;
-          await bridge?.uninstall();
+          _saveBlocker = null;
+          try {
+            await bridge?.uninstall();
+          } finally {
+            removeSaveBlocker(blocker);
+          }
         },
 
         onOutgoingPlaintext: event("onOutgoingPlaintext", _outgoingSinks),
@@ -240,7 +269,7 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
     };
   }
 
-  onShutdown() {
+  onShutdown(isAppShutdown) {
     if (_commandRegistered) {
       _commandRegistered = false;
       safely("unregistering the /omemo command", () => {
@@ -248,10 +277,20 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
       });
     }
     const bridge = _bridge;
+    const blocker = _saveBlocker;
     _bridge = null;
+    _saveBlocker = null;
     // Restores Thunderbird's functions at once; the key stores finish saving
-    // in the background.
-    bridge?.uninstall().catch((e) => console.error("[omemo] uninstall failed:", e));
+    // in the background. The shutdown blocker stays until they have, so
+    // quitting meanwhile still waits for them; at app shutdown it's what
+    // Thunderbird is waiting on, so it stays.
+    bridge?.uninstall()
+      .catch((e) => console.error("[omemo] uninstall failed:", e))
+      .finally(() => {
+        if (!isAppShutdown) {
+          removeSaveBlocker(blocker);
+        }
+      });
     if (_resourceName) {
       const name = _resourceName;
       _resourceName = null;

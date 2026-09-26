@@ -9,7 +9,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { createSaver, storeFileName, geckoFileAccess } from "../src/omemo/persist.js";
+import { createSaver, storeFileName, legacyStoreFileName, geckoFileAccess } from "../src/omemo/persist.js";
 import { createStore, OmemoStore } from "../src/omemo/store.js";
 
 /** Timers the test fires by hand. */
@@ -140,10 +140,32 @@ test("a failed write is reported and retried on the next flush", async () => {
   assert.deepEqual(writes, ["data"]);
 });
 
-test("store file names: the bare JID, lowercased, with odd characters replaced", () => {
+test("store file names: the bare JID, lowercased, with odd characters percent-encoded", () => {
   assert.equal(storeFileName("Alice@Example.org/Thunderbird"), "alice@example.org.json");
-  assert.equal(storeFileName("we ird\\na:me@host"), "we_ird_na_me@host.json");
+  assert.equal(storeFileName("we ird\\na:me@host"), "we%20ird%5Cna%3Ame@host.json");
+  assert.equal(storeFileName("jürgen@example.org"), "j%C3%BCrgen@example.org.json");
   assert.throws(() => storeFileName("/resource"), /needs the account's JID/);
+  assert.equal(legacyStoreFileName("we ird\\na:me@host"), "we_ird_na_me@host.json", "0.1.0's names");
+});
+
+test("store file names never collide: +, _, escapes and non-ASCII JIDs each get their own", () => {
+  const jids = [
+    "alice+work@example.org",
+    "alice_work@example.org",
+    "alice%2Bwork@example.org",
+    "alice%2bwork@example.org",
+    "alice\\20work@example.org",
+    "alice work@example.org",
+    "alicé@example.org",
+    "aliceé@example.org",
+    "alice_@example.org",
+    "alice\u{1F600}@example.org",
+    "alice?@example.org",
+  ];
+  // Case-insensitively too, as on Windows and macOS.
+  const names = jids.map((j) => storeFileName(j).toLowerCase());
+  assert.equal(new Set(names).size, new Set(jids.map((j) => j.toLowerCase())).size);
+  assert.equal(legacyStoreFileName(jids[0]), legacyStoreFileName(jids[1]), "the old names did collide");
 });
 
 /** An in-memory IOUtils/PathUtils, recording calls. */
@@ -172,6 +194,14 @@ function fakeGecko({ failPermissions = false } = {}) {
         if (failPermissions) {
           throw new Error("not supported");
         }
+      },
+      move: async (from, to, opts) => {
+        calls.push(["move", from, to, opts]);
+        if (opts?.noOverwrite && files.has(to)) {
+          throw new Error("exists");
+        }
+        files.set(to, files.get(from));
+        files.delete(from);
       },
     },
   };
@@ -206,4 +236,39 @@ test("end to end: a store saves through the saver and loads back", async () => {
   const loaded = OmemoStore.fromJSON(JSON.parse(await access.read()));
   assert.equal(loaded.deviceId, store.deviceId);
   assert.equal(loaded.preKey("twomemo", 1), null);
+});
+
+/** A saved store whose own device list (under `owners`) has its device id. */
+function savedStoreOf(...owners) {
+  const store = createStore();
+  for (const jid of owners) {
+    store.setDevices("twomemo", jid, [{ id: store.deviceId }]);
+  }
+  return JSON.stringify(store.toJSON());
+}
+
+test("a store under its 0.1.0 name moves to the new name when it's this account's", async () => {
+  const gecko = fakeGecko();
+  const text = savedStoreOf("alice+work@example.org");
+  gecko.files.set("/profile/omemo/alice_work@example.org.json", text);
+  const access = geckoFileAccess("alice+work@example.org", gecko);
+  assert.equal(access.path, "/profile/omemo/alice%2Bwork@example.org.json");
+  assert.equal(await access.read(), text);
+  assert.deepEqual([...gecko.files.keys()], ["/profile/omemo/alice%2Bwork@example.org.json"], "moved, not copied");
+  assert.equal(await access.read(), text, "and read from the new name after");
+});
+
+test("a 0.1.0 store another account owns is left for it; this account starts fresh", async () => {
+  const gecko = fakeGecko();
+  const legacy = "/profile/omemo/alice_work@example.org.json";
+  // alice_work's own store: alice+work must not take it.
+  gecko.files.set(legacy, savedStoreOf("alice_work@example.org"));
+  assert.equal(await geckoFileAccess("alice+work@example.org", gecko).read(), null);
+  // A store both accounts wrote to (the old collision): alice_work, whose
+  // name didn't change, keeps it.
+  gecko.files.set(legacy, savedStoreOf("alice+work@example.org", "alice_work@example.org"));
+  assert.equal(await geckoFileAccess("alice+work@example.org", gecko).read(), null);
+  assert.ok(gecko.files.has(legacy));
+  assert.equal(await geckoFileAccess("alice_work@example.org", gecko).read(), gecko.files.get(legacy));
+  assert.equal(gecko.calls.some((c) => c[0] === "move"), false);
 });
