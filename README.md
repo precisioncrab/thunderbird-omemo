@@ -26,7 +26,7 @@ milestones, and the project's licensing/distribution plan live in
 Early release (0.1.0). In Thunderbird (tested on Thunderbird 156 on Windows, with a Snikket
 server), it encrypts and decrypts one-to-one XMPP chats with OMEMO, in both the older
 namespace Conversations-family apps use and the newer one, and interoperates with
-Cheogram phones in both directions. What's in place:
+Cheogram chats in both directions. What's in place:
 
 - Opt-in encryption: an options page ("only chats I switch on", "always use OMEMO when
   available", "always use OMEMO"), Thunderbird's own lock button to switch a chat on,
@@ -108,13 +108,19 @@ your user only. Protect the profile the way you protect the rest of your mail.
 
 Source is public here under MPL-2.0 so anyone can build and run it themselves, and so
 Mozilla can pick this up directly if/when native OMEMO work starts on Thunderbird
-itself. The add-on can't be listed on addons.thunderbird.net, which doesn't accept
-add-ons that use Experiment APIs, and there is no other way to hook Thunderbird's chat.
-Releases are unsigned `.xpi` files on the
+itself.
+
+**Why it isn't on addons.thunderbird.net.** Normal Thunderbird add-ons can only use
+Thunderbird's official add-on APIs, and those have nothing for chat. The one way to
+change what Thunderbird's chat sends and receives is an *Experiment*: add-on code that
+runs inside Thunderbird itself and reaches its internal code directly. Thunderbird's
+official add-on site no longer reviews or accepts add-ons that use Experiments, so this
+one can't be listed there or signed by Mozilla.
+
+Releases are therefore unsigned `.xpi` files on the
 [Releases](https://github.com/precisioncrab/thunderbird-omemo/releases) page, installed
-from file as described under [Install](#install). This add-on
-is a bridge until Thunderbird ships native OMEMO support. See `docs/PLAN.md` for the
-reasoning.
+from file as described under [Install](#install). This add-on is a bridge until
+Thunderbird ships native OMEMO support. See `docs/PLAN.md` for the reasoning.
 
 ## Supporting this project
 
