@@ -4,7 +4,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 
 ## Current state (2026-09-26)
 
-**Encrypted 1:1 chat works in Thunderbird (version 0.0.15, confirmed by the maintainer 2026-09-26).** Milestones 2-4 are done and confirmed in the maintainer's Thunderbird 156 with real Cheogram phones in both directions; milestone 5 (trust, verification, QR codes) is built and working. The release is opt-in (options page, lock button, `/omemo` command). Milestone 6 (hardening) is in 0.0.15. Open: 4.12's full interop matrix, packaging as a self-distributed unsigned `.xpi` (milestone 7; addons.thunderbird.net rejects Experiment add-ons), calling (milestone 8, after v1).
+**Encrypted 1:1 chat works in Thunderbird (version 0.1.0, released publicly 2026-09-26).** Milestones 2-4 are done and confirmed in the maintainer's Thunderbird 156 with real Cheogram phones in both directions; milestone 5 (trust, verification, QR codes) is built and working. The release is opt-in (options page, lock button, `/omemo` command). Milestone 6 (hardening) is in 0.0.15. Open: 4.12's full interop matrix, packaging as a self-distributed unsigned `.xpi` (milestone 7; addons.thunderbird.net rejects Experiment add-ons), calling (milestone 8, after v1).
 
 | Area | State | Task |
 |---|---|---|
@@ -29,22 +29,20 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 | Trust and verification (milestone 5, `src/omemo/trust.js`, `fingerprint.js`) | **Working** (0.0.9-0.0.10): blind trust before verification, fingerprint and QR verification confirmed with Cheogram. The lock reading "verified" not yet reported | `docs/PLAN.md` |
 | Hardening and multi-device (milestone 6) | Own other devices and carbons work. **Done (0.0.11-0.0.15, run 2026-09-26; rotation and the 90-day rule can't show until their dates):** device labels and last-message times in `/omemo`; weekly signed prekey rotation, replaced keys kept 30 days; devices silent 90 days left out when encrypting (never all of a JID's); `/omemo remove <device>` for our own old installs; upkeep every 6 hours | `docs/PLAN.md` |
 | Options page tabs and Instructions (`src/options/`) | **Confirmed** (0.0.15): Settings, Verify on phone and Instructions tabs; `/omemo help` and `/omemo qr` open the page as a Thunderbird tab | |
-| Packaging (milestone 7) | Mostly not started. Self-distributed unsigned `.xpi` (ATN rejects Experiment add-ons); whether to charge is undecided. Done: the "What this add-on can access" section (README, Instructions tab) | `docs/PLAN.md` |
+| Packaging (milestone 7) | **Done: 0.1.0 released** on GitHub (free, unsigned `.xpi`, sponsor button). Earlier notes: Self-distributed unsigned `.xpi` (ATN rejects Experiment add-ons); whether to charge is undecided. Done: the "What this add-on can access" section (README, Instructions tab) | `docs/PLAN.md` |
 
 **Tests:** `npm test` gives 251 passing. `npm run test:coverage` shows the crypto core fully covered apart from three unreachable length checks.
 
-**Repo:** private GitHub `precisioncrab/thunderbird-omemo`, branch `main`. The plan is to make it public once the crypto passes real interop tests.
+**Repo:** public GitHub `precisioncrab/thunderbird-omemo`, branch `main`, since the 0.1.0 release (2026-09-26), starting from one fresh commit. The full development history before that is in the private `precisioncrab/thunderbird-omemo-dev` (local branch `dev-history`, remote `archive`). Commits use "Precision Crab" and the GitHub no-reply address. The repo is public: keep personal details (names, personal XMPP addresses) out of it; tests and docs use the test1/test2@test.snikket.chat accounts.
 
 **License:** MPL-2.0 (Thunderbird's own license), with MIT dependencies. Rule: no copyleft code in the repo, dev tooling included, so Thunderbird could adopt it (see `tools/gen-vectors/README.md`).
 
 ## Next steps
 
-1. **Sponsors page link** from the maintainer, for the README's donate button and `.github/FUNDING.yml` (it still has placeholders).
-2. **Going public with a fresh history (decided 2026-09-26):** this private repo keeps its full history as an archive (to be renamed `thunderbird-omemo-dev`), and a new public `precisioncrab/thunderbird-omemo` starts from one commit of the clean files (personal details were removed 2026-09-26; the test accounts use test.snikket.chat). Commits now use "Precision Crab" and the GitHub no-reply address (set in this repo's local git config). Nothing is deleted or force-pushed.
-3. **Milestone 7, free release:** unsigned `.xpi` as a GitHub release with install steps (install from file, `xpinstall.signatures.required=false`), a note on tested Thunderbird versions, donate button, make the repo public.
-4. **Pro (paid, $10):** milestone 8 calling in a private repo, sold on Gumroad. Decide how Pro installs next to or over the free add-on.
-5. **4.12 interop matrix** with other OMEMO clients (Conversations, Gajim, Dino, Monal), and **OTR/OMEMO coexistence** (keep OTR off until then).
-6. Small: remove the `padlock:` log lines once the lock grouping is confirmed; watch for the first signed prekey rotation (about 2026-10-02).
+1. **Watch the 0.1.0 release:** GitHub issues from users, and whether other Thunderbird versions (ESR 128/140, newer releases) load it. Keep a tested-versions note in the README.
+2. **Pro (paid, $10):** milestone 8 calling in a private repo, sold on Gumroad. Decide how Pro installs next to or over the free add-on (same add-on id so it replaces the free one is the simplest), and which small, generic hooks go into the public repo.
+3. **4.12 interop matrix** with other OMEMO clients (Conversations, Gajim, Dino, Monal), and **OTR/OMEMO coexistence** (the README tells users to turn OTR off until then).
+4. Small: remove the `padlock:` log lines once the lock grouping is confirmed; watch for the first signed prekey rotation (about 2026-10-02).
 
 ## Open risks and decisions
 
@@ -53,13 +51,13 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 - **OTR and OMEMO in the same conversation:** Thunderbird has built-in OTR, which can start on its own between XMPP contacts. Still open: make sure the two never both encrypt a conversation (prefer OMEMO when the peer has OMEMO devices, and keep OTR out of it), and tell the user which one is active. Testing so far runs with OTR off (`chat.otr.enable`=false), since OTR crashed Thunderbird.
 - **oldmemo's wire format has no reference** (but a real Cheogram client's oldmemo messages now decrypt, 2026-09-25). Every oldmemo implementation is GPL/AGPL. It gets confirmed against real clients (Conversations, Gajim) in 4.12, where we also save real stanzas as test fixtures. One item to check there: we send `pn` the way libsignal does (last index, not length) and accept either reading on receive.
 - **oldmemo key exchanges without a pre key:** libsignal makes `preKeyId` optional, but our protobuf schema requires it. Fine for what we send; relax it if a real client ever omits it (4.12).
-- **When to make the repo public:** after the crypto passes interop tests (the plan's MPL-2.0 intent).
 - **noble 2.x migration (2.11):** optional. We use 1.x names that also exist in 2.x where it was cheap.
 - **The project-root docs are not in git:** `NEXT.md`, `_context.md` and `AGENTS.md` sit outside the repo. Consider moving them in.
 
 ## Log
 
 ### 2026-09-26
+- **0.1.0 released publicly.** https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.0 with `thunderbird-omemo-0.1.0.xpi` (same code as 0.0.15). The private repo was renamed `thunderbird-omemo-dev` and keeps the full history; the new public `precisioncrab/thunderbird-omemo` starts from one commit of the same files (trees checked identical). The README gained a sponsor badge and section (GitHub Sponsors, `.github/FUNDING.yml`: `github: precisioncrab`), install steps (Config Editor: `xpinstall.signatures.required` false, `chat.otr.enable` false; install from file; update by installing over), and the tested version (Thunderbird 156, Windows, Snikket). Repo topics: thunderbird, thunderbird-addon, omemo, xmpp, end-to-end-encryption, webextension.
 - **Personal details removed; fresh public history.** The docs and comments no longer name the maintainer or two personal XMPP accounts, and the test accounts moved to test.snikket.chat. Older commits still hold them, so the public repo will start from one fresh commit while this private repo stays as the full-history archive. Commits now use "Precision Crab" and the GitHub no-reply address.
 - **Distribution decided: free OMEMO release, paid Pro with calling.** **Decided 2026-09-26 (the maintainer):** the OMEMO add-on as it stands is released **free** (MPL-2.0, public), in the hope that Thunderbird adopts it, with the README asking for donations through a button to the maintainer's sponsors page (`.github/FUNDING.yml`). A second, paid **Pro** version adds calling (milestone 8) for **$10**. Since the free repo is public, Pro's calling code lives in a separate private repo under the maintainer's own license (MPL-2.0 is per file, so new files can be proprietary; any MPL file Pro changes must have its source offered to Pro's buyers). Plan: generic extension points in the free repo, the calling code in Pro's own files. Also confirmed: weekly signed prekey rotation stays (the maintainer asked whether it's practical; only the signed prekey rotates, the identity key and fingerprints never change, and the X3DH spec suggests weekly or monthly).
 - **0.0.15 confirmed.** The maintainer ran the checklist and reports everything working. The stores agree: test1 now has test2's Thunderbird and phone verified (and test2 has all of test1's), both stores migrated to the new fields (`firstSeen` on every device, `oldSignedPreKeys` per namespace), and neither account has an old install to remove (each lists only its Thunderbird and one phone). The signed prekeys date from 2026-09-25, so the first rotation is due about 2026-10-02. Milestone 6 is done apart from what only time can show.

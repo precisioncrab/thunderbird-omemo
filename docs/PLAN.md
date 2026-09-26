@@ -47,7 +47,7 @@ One-to-one chats only. Group chat OMEMO (MUC) adds real complexity on top: rooms
 Decision: MPL-2.0, source public on GitHub. This keeps the door open to proposing it for comm-central later without a relicensing exercise, lets Mozilla (or anyone) actually look at and reuse the code, and matches the norm in the OMEMO/XMPP client world where every mainstream client is open source, which matters for a security tool people are trusting with their message content.
 
 Updates (2026-09-24):
-- **Private for now:** the repo (`precisioncrab/thunderbird-omemo`) stays private until the crypto passes real interop tests, then goes public.
+- **Public since 0.1.0 (2026-09-26):** `precisioncrab/thunderbird-omemo`, from one fresh commit; the earlier history stays in the private `precisioncrab/thunderbird-omemo-dev`.
 - **No copyleft anywhere in the repo, dev tooling included,** so Thunderbird could adopt it as-is. Dependencies are MIT (`@noble`). Test vectors come only from MIT-licensed reference libraries.
 - **oldmemo has no permissive reference implementation.** Every one is GPL or AGPL, which is the gap this project fills. So oldmemo's wire format is confirmed against real clients instead (`docs/TASKS.md` 4.12).
 
@@ -66,7 +66,7 @@ GitHub supports a sponsor/tip button natively through a `.github/FUNDING.yml` fi
 
 ## Milestones
 
-_Milestones 2-4 are broken into concrete tasks in `docs/TASKS.md` (2026-09-24). Progress: `docs/STATUS.md`. As of 2026-09-26, milestones 0-4 are done and confirmed in Thunderbird, milestone 5 (trust) is working, milestone 6 is done (0.0.15), and milestones 7-8 are open._
+_Milestones 2-4 are broken into concrete tasks in `docs/TASKS.md` (2026-09-24). Progress: `docs/STATUS.md`. As of 2026-09-26, milestones 0-4 are done and confirmed in Thunderbird, milestone 5 (trust) is working, milestones 6-7 are done (0.1.0 released 2026-09-26), and milestone 8 (calling, the paid Pro version) is open._
 
 **0. Source spike (1-2 weeks).** Read `xmpp.sys.mjs`, `xmpp-base.sys.mjs`, and `xmpp-xml.sys.mjs` in full to find the actual stanza-build and stanza-dispatch entry points, confirm whether PEP/pubsub helpers already exist in-tree (likely, since avatars and bookmarks use PEP) or need to be added, and confirm the exact shape of the `sending-message`/`received-message`/`update-conv-encryption` observer contracts by tracing how OTR uses them today. This milestone produces the real integration-point list the rest of the plan currently has to guess at.
 
