@@ -1,0 +1,114 @@
+[
+  {
+    "namespace": "omemoXmpp",
+    "description": "Privileged bridge into Thunderbird's internal XMPP implementation, used to hook outgoing/incoming message stanzas for OMEMO encryption. See docs/PLAN.md for why this needs an Experiment rather than a stable WebExtension API.",
+    "functions": [
+      {
+        "name": "install",
+        "type": "function",
+        "description": "Monkey-patches XMPPConversationPrototype.dispatchMessage and GenericAccountPrototype's XMPP onMessageStanza to route plaintext through the OMEMO layer. Idempotent; safe to call multiple times.",
+        "async": true,
+        "parameters": []
+      },
+      {
+        "name": "uninstall",
+        "type": "function",
+        "description": "Restores the original, unpatched functions. Used on add-on disable/uninstall.",
+        "async": true,
+        "parameters": []
+      },
+      {
+        "name": "setSettings",
+        "type": "function",
+        "description": "Applies the options page's encryption setting: mode is manual (off unless switched on per chat), available (always use OMEMO when available) or always (always use OMEMO).",
+        "async": true,
+        "parameters": [
+          {
+            "name": "settings",
+            "type": "object",
+            "properties": {
+              "mode": {
+                "type": "string",
+                "enum": [
+                  "manual",
+                  "available",
+                  "always"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "getOwnDevices",
+        "type": "function",
+        "description": "This Thunderbird's OMEMO device on each connected XMPP account, with its fingerprint and the xmpp: link Conversations-family apps scan to verify it.",
+        "async": true,
+        "parameters": []
+      }
+    ],
+    "events": [
+      {
+        "name": "onDiagnostic",
+        "type": "function",
+        "description": "Debug only (task 4.0): every [omemo] diagnostic line the Experiment logs, so it also shows in the add-on's own console. Lines from before the listener was added are replayed.",
+        "parameters": [
+          {
+            "name": "line",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "onOutgoingPlaintext",
+        "type": "function",
+        "description": "Debug only (task 4.0): fires with (conversationId, plaintext) whenever the dispatchMessage hook runs. Task 3.0 moves encryption into the Experiment, after which this goes away.",
+        "parameters": [
+          {
+            "name": "conversationId",
+            "type": "integer"
+          },
+          {
+            "name": "plaintext",
+            "type": "string"
+          }
+        ]
+      },
+      {
+        "name": "onIncomingEncrypted",
+        "type": "function",
+        "description": "Debug only (task 4.0): fires with (from, encryptedPayload) when an incoming stanza has an <encrypted> element in the oldmemo/twomemo namespace. encryptedPayload is { namespace, xml }. Task 3.0 moves decryption into the Experiment, after which this goes away.",
+        "parameters": [
+          {
+            "name": "from",
+            "type": "string"
+          },
+          {
+            "name": "encryptedPayload",
+            "type": "object",
+            "properties": {
+              "namespace": {
+                "type": "string"
+              },
+              "xml": {
+                "type": "string"
+              }
+            }
+          }
+        ]
+      },
+      {
+        "name": "onShowPage",
+        "type": "function",
+        "description": "Fired by /omemo qr and /omemo help: open the add-on's page at a section.",
+        "parameters": [
+          {
+            "name": "section",
+            "type": "string",
+            "enum": ["verify", "instructions"]
+          }
+        ]
+      }
+    ]
+  }
+]

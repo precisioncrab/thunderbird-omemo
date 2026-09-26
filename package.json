@@ -1,0 +1,27 @@
+{
+  "name": "thunderbird-omemo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "OMEMO end-to-end encryption for XMPP in Thunderbird Chat, via a WebExtension Experiment.",
+  "license": "MPL-2.0",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/**/*.test.js\"",
+    "test:coverage": "node --test --experimental-test-coverage \"test/**/*.test.js\"",
+    "lint": "echo \"(add eslint config)\" && exit 0",
+    "build": "node scripts/build.mjs",
+    "package": "node scripts/package.mjs"
+  },
+  "dependencies": {
+    "@noble/ciphers": "^0.6.0",
+    "@noble/curves": "^1.4.0",
+    "@noble/hashes": "^1.4.0",
+    "qrcode-generator": "^2.0.4"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

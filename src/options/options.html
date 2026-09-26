@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<!-- This Source Code Form is subject to the terms of the Mozilla Public
+   - License, v. 2.0. If a copy of the MPL was not distributed with this
+   - file, You can obtain one at http://mozilla.org/MPL/2.0/. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>OMEMO for Thunderbird Chat</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      font: menu;
+      font-size: 14px;
+    }
+    body {
+      margin: 16px;
+      max-width: 640px;
+      line-height: 1.45;
+    }
+    h1 {
+      font-size: 1.25em;
+      margin: 0 0 12px;
+    }
+    fieldset {
+      border: none;
+      margin: 0;
+      padding: 0;
+    }
+    legend {
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    label.mode {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      column-gap: 8px;
+      padding: 8px 10px;
+      border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+      border-radius: 6px;
+      margin-bottom: 8px;
+      cursor: pointer;
+    }
+    label.mode:has(input:checked) {
+      border-color: AccentColor;
+      background: color-mix(in srgb, AccentColor 12%, transparent);
+    }
+    label.mode input {
+      grid-row: span 2;
+      margin-top: 3px;
+    }
+    .name {
+      font-weight: 600;
+    }
+    .detail {
+      opacity: 0.8;
+    }
+    .note {
+      margin-top: 14px;
+      opacity: 0.85;
+    }
+    code {
+      font-family: monospace;
+    }
+    h2 {
+      font-size: 1.1em;
+      margin: 24px 0 8px;
+    }
+    .device {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: 12px;
+      align-items: start;
+      padding: 10px;
+      border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .qr svg {
+      display: block;
+      width: 200px;
+      height: 200px;
+    }
+    .fingerprint {
+      font-family: monospace;
+      word-spacing: 0.3em;
+    }
+    h3 {
+      font-size: 1em;
+      margin: 16px 0 4px;
+    }
+    table.commands {
+      border-collapse: collapse;
+      width: 100%;
+    }
+    table.commands th,
+    table.commands td {
+      text-align: left;
+      vertical-align: top;
+      padding: 6px 8px;
+      border-top: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+    }
+    table.commands th {
+      font-weight: normal;
+      white-space: nowrap;
+    }
+    [role="tablist"] {
+      display: flex;
+      gap: 4px;
+      border-bottom: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+      margin-bottom: 16px;
+    }
+    [role="tab"] {
+      font: inherit;
+      color: inherit;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 6px 12px;
+      cursor: pointer;
+    }
+    [role="tab"][aria-selected="true"] {
+      border-bottom-color: AccentColor;
+      font-weight: 600;
+    }
+    [role="tabpanel"] h2:first-child {
+      margin-top: 0;
+    }
+    #saved {
+      min-height: 1.4em;
+      margin-top: 8px;
+      opacity: 0.8;
+    }
+  </style>
+</head>
+<body>
+  <h1>OMEMO encryption for XMPP chats</h1>
+  <div role="tablist">
+    <button type="button" role="tab" id="tab-settings" aria-controls="settings">Settings</button>
+    <button type="button" role="tab" id="tab-verify" aria-controls="verify">Verify on phone</button>
+    <button type="button" role="tab" id="tab-instructions" aria-controls="instructions">Instructions</button>
+  </div>
+
+  <section role="tabpanel" id="settings" aria-labelledby="tab-settings">
+  <fieldset id="modes">
+    <legend>When should chats be encrypted?</legend>
+    <label class="mode">
+      <input type="radio" name="mode" value="manual">
+      <span class="name">Only chats I switch on</span>
+      <span class="detail">Nothing is encrypted until you switch a chat on, with its lock button or by typing <code>/omemo on</code>.</span>
+    </label>
+    <label class="mode">
+      <input type="radio" name="mode" value="available">
+      <span class="name">Always use OMEMO when available</span>
+      <span class="detail">Chats with contacts who use OMEMO are encrypted automatically. Everyone else, such as SMS contacts through a gateway, gets normal unencrypted messages.</span>
+    </label>
+    <label class="mode">
+      <input type="radio" name="mode" value="always">
+      <span class="name">Always use OMEMO</span>
+      <span class="detail">Never send unencrypted messages. A contact without OMEMO can't be messaged until you type <code>/omemo off</code> in that chat.</span>
+    </label>
+  </fieldset>
+  <p class="note">In any chat, <code>/omemo on</code> or <code>/omemo off</code> overrides this setting for that contact (see <a href="#instructions">Instructions</a>). Messages you receive encrypted are always decrypted.</p>
+  <div id="saved" role="status"></div>
+  </section>
+
+  <section role="tabpanel" id="verify" aria-labelledby="tab-verify" hidden>
+  <h2>Verify Thunderbird on your phone</h2>
+  <p class="detail">In Cheogram, Conversations or Snikket, scan this code from the chat with this account (or its contact details). The app then marks this Thunderbird as verified. You can also compare the fingerprint by eye.</p>
+  <div id="devices"><p class="detail">Loading...</p></div>
+  </section>
+
+  <section role="tabpanel" id="instructions" aria-labelledby="tab-instructions" hidden>
+  <h2>Commands</h2>
+  <p>Type these commands in an XMPP chat's message box. They apply to that chat and are never sent to the contact.</p>
+  <table class="commands">
+    <tr>
+      <th><code>/omemo</code><br>or <code>/omemo status</code></th>
+      <td>Shows your setting, whether this chat's messages are encrypted, this Thunderbird's device number and fingerprint, and each of the contact's devices and your own other devices: its number, when it last sent a message, its fingerprint and whether it's trusted.</td>
+    </tr>
+    <tr>
+      <th><code>/omemo on</code></th>
+      <td>Encrypts this chat, whatever the setting above. The chat's lock button does the same.</td>
+    </tr>
+    <tr>
+      <th><code>/omemo off</code></th>
+      <td>Sends this chat's messages unencrypted. Needed for contacts without OMEMO, such as SMS numbers through a gateway, when the setting is "Always use OMEMO".</td>
+    </tr>
+    <tr>
+      <th><code>/omemo default</code></th>
+      <td>Makes this chat follow the setting above again.</td>
+    </tr>
+    <tr>
+      <th><code>/omemo help</code></th>
+      <td>Opens these instructions in their own tab.</td>
+    </tr>
+    <tr>
+      <th><code>/omemo qr</code></th>
+      <td>Opens the QR code that verifies this Thunderbird on your phone (the "Verify on phone" tab).</td>
+    </tr>
+    <tr>
+      <th><code>/omemo verify</code> <var>device</var> <var>fingerprint</var></th>
+      <td>Marks a device as verified once you've compared its fingerprint (in the contact's app, or in person). The fingerprint is optional; if you give it, it must match. When all of a contact's devices are verified, the lock shows "verified".</td>
+    </tr>
+    <tr>
+      <th><code>/omemo trust</code> <var>device</var></th>
+      <td>Approves a device without verifying it, so messages are encrypted to it.</td>
+    </tr>
+    <tr>
+      <th><code>/omemo distrust</code> <var>device</var></th>
+      <td>Stops encrypting to a device, and marks its messages with a warning.</td>
+    </tr>
+    <tr>
+      <th><code>/omemo remove</code> <var>device</var></th>
+      <td>Takes one of your own old installs off your account's device list, so it stops getting copies of your messages. Only works for your own devices, not this Thunderbird. If that app is still in use, it adds itself back the next time it connects.</td>
+    </tr>
+  </table>
+  <p class="detail"><var>device</var> is a device number from <code>/omemo</code>. <code>verify</code>, <code>trust</code> and <code>distrust</code> work for the contact's devices and for your own other devices.</p>
+
+  <h3>Devices</h3>
+  <p class="detail">Every app install is its own device with its own number: this Thunderbird, each phone app, and each reinstall. Old installs stay on the list until something removes them, so <code>/omemo</code> may show devices you no longer use. One that hasn't sent a message in a long time is most likely an old install. A device that has been silent for 90 days is left out when encrypting (unless all of that person's devices are), and <code>/omemo</code> says so; it's included again as soon as it sends a message. You can remove your own old installs with <code>/omemo remove</code>. Devices marked "older OMEMO" are apps such as Conversations and Cheogram; "newer OMEMO" devices usually show their app's name, such as "Thunderbird".</p>
+
+  <h3>Trust</h3>
+  <p class="detail">Like Conversations: a contact's devices are trusted automatically until you verify one of them. After that, a new device of theirs isn't encrypted to until you trust or verify it, and the chat tells you when that happens. A device whose key changes is always reported in the chat.</p>
+  <p class="detail">Trust belongs to each of your accounts. If you have two accounts in Thunderbird, verifying a contact in one account's chat doesn't verify them for the other; do it in each account's chat.</p>
+
+  <h3>What this add-on can access</h3>
+  <p class="detail">Thunderbird says this add-on has "full, unrestricted access to Thunderbird and your computer". It shows that for every add-on built with an Experiment, which is the only way to reach Thunderbird's chat. In practice it means the add-on could do anything your own user account can do, but not anything that needs administrator rights.</p>
+  <p class="detail">What it actually uses:</p>
+  <ul class="detail">
+    <li>Thunderbird's XMPP chat code, to encrypt what you send and decrypt what you receive.</li>
+    <li>Its own key files, one per account, in the <code>omemo</code> folder of your Thunderbird profile. No other files.</li>
+    <li>Your XMPP accounts' existing connections, to publish and fetch OMEMO keys on your own servers.</li>
+    <li>The setting on the Settings tab, in the add-on's own storage.</li>
+  </ul>
+  <p class="detail">It makes no other network connections: no tracking, no update checks, no license server. The source code is public, so anyone can check this.</p>
+  </section>
+  <script src="../../dist/options.js"></script>
+</body>
+</html>
