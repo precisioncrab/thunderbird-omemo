@@ -9,7 +9,7 @@ _Checks that only a person in Thunderbird can run. Tick each box as you go and n
 - [ ] The Error Console is open (Ctrl+Shift+J) and filtered on `[omemo]`.
 - Accounts: test1 and test2 in Thunderbird; the phones as noted per section.
 
-**Two different locks.** The small padlock beside a sender's name means that message was encrypted. It never shows verification, and a follow-on message from the same sender has none (Thunderbird only draws it on the sender line). The **encryption button in the chat's header** (above the messages) is the one that shows the chat's state:
+**Two different locks.** The small padlock beside a sender's name means that message was encrypted. It never shows verification, and a follow-on message from the same sender has none (Thunderbird only draws it on the sender line). The chat's state is at the **right end of the bar at the top of the chat** (the strip with the contact's picture, name and status message): the text "Encryption Status:" and a small dropdown button with one of these labels. Thunderbird hides both when the chat has no encryption state:
 
 | Button label | Meaning |
 |---|---|
@@ -21,7 +21,12 @@ _Checks that only a person in Thunderbird can run. Tick each box as you go and n
 ## 1. The encryption button
 
 - [x] Message padlocks: shown on the sender line only; follow-on messages have none (confirmed 2026-09-26 from a screenshot).
-- [ ] In a chat where every contact device is verified (`/omemo` lists all as verified), the header button reads **Private**.
+- [ ] In a test1/test2 chat, "Encryption Status:" and its button appear at the right end of the contact bar. If not, check what the add-on reports: set `devtools.chrome.enabled` to true in the Config Editor, open the Error Console (Ctrl+Shift+J), and run the line below (0 hidden, 1 Insecure, 2 Unverified, 3 Private). A 3 with no button means Thunderbird isn't redrawing it; a 0 means the add-on reports the wrong state.
+
+  ```js
+  ChromeUtils.importESModule("resource:///modules/IMServices.sys.mjs").IMServices.conversations.getUIConversations().map(c => `${c.name}: ${c.encryptionState}`).join("\n")
+  ```
+- [ ] In a chat where every contact device is verified (`/omemo` lists all as verified), the button reads **Private**.
 - [ ] Hovering over it says the conversation is encrypted and private.
 - [ ] `/omemo distrust <device>` on one contact device: the button changes to **Unverified** without reopening the chat. Then `/omemo verify <device>` again: back to **Private**.
 - [ ] After restarting Thunderbird, the button still reads **Private** once the account has connected.
@@ -80,7 +85,7 @@ Notes:
 Back up the profile first; OTR crashed Thunderbird once in earlier testing.
 
 - [ ] Set `chat.otr.enable` to true and restart. Does Thunderbird crash? If so, note when (at start, opening a chat, sending).
-- [ ] In an OMEMO chat, does the header offer OTR options?
+- [ ] In an OMEMO chat, does the "Encryption Status:" button's menu offer OTR options?
 - [ ] Does an OMEMO chat still send and receive encrypted?
 - [ ] Set `chat.otr.enable` back to false afterwards.
 

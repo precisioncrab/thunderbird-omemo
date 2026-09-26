@@ -34,7 +34,8 @@ Cheogram chats in both directions. What's in place:
   `trust`, `distrust`), explained on the options page's Instructions tab.
 - Trust like Conversations: devices are trusted automatically until you verify one of a
   contact's devices; after that, new devices wait for your approval, and changed keys
-  are always flagged. The encryption button in the chat's header reads "Private" when
+  are always flagged. The "Encryption Status" button, at the right of the bar at the top of
+  the chat, reads "Private" when
   all of a contact's devices are verified, and "Unverified" until then.
 - Fingerprints in the same form Conversations shows, and a QR code on the options page
   that phones scan to verify Thunderbird.
