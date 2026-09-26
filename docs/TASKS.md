@@ -2,7 +2,7 @@
 
 _Created 2026-09-24. Breaks `docs/PLAN.md` milestones 2-4 into pick-up-sized tasks. Check items off as they land; the first unchecked item is the next thing to do. `docs/PLAN.md` stays the architecture reference._
 
-**Where we are (2026-09-25):** milestones 2-4 done and confirmed in Thunderbird with Cheogram phones (version 0.0.10); milestone 5's trust, verification and QR codes built and working (tracked in `docs/STATUS.md`, since M5-M6 have no task breakdown here yet). Device labels, the options page's Instructions tab and milestone 6 hardening (signed prekey rotation, stale devices, `/omemo remove`) are in 0.0.15 (confirmed 2026-09-26). Next: milestone 7 packaging. Open here: 3.10/4.12's full interop matrix, 2.11 (optional).
+**Where we are (2026-09-26):** milestones 2-7 are done and 0.1.0 is released publicly (tracked in `docs/STATUS.md`; milestones 5-7 have no task breakdown here). Open here: 3.10/4.12's full interop matrix with other clients (Conversations, Gajim, Dino, Monal) and 2.11 (optional).
 
 ## Baseline (2026-09-24, first `npm install` + `npm test`; historical)
 

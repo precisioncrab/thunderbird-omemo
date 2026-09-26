@@ -1,6 +1,6 @@
 # Handoff notes
 
-_How to pick this project up. The current state and log are in `docs/STATUS.md`. The next task is the first unchecked item in `docs/TASKS.md`._
+_How to pick this project up or review it. The current state and log are in `docs/STATUS.md` (newest on top); the architecture and milestones are in `docs/PLAN.md`; the task list and per-namespace protocol constants are in `docs/TASKS.md`. Last updated 2026-09-26, at the 0.1.0 release._
 
 ## Setup
 
@@ -11,54 +11,68 @@ npm install
 npm test
 ```
 
-This needs Node 22 or newer (`npm test` passes a glob to `node --test`). Expect all tests to pass. `npm run test:coverage` adds Node's coverage report; the crypto core is fully covered apart from three unreachable length checks. Shared test helpers (vector loading, hex/base64, `replay` for injecting recorded randomness) are in `test/helpers.js`.
+This needs Node 22 or newer (`npm test` passes a glob to `node --test`). All 251 tests should pass. `npm run test:coverage` adds Node's coverage report; the crypto core is fully covered apart from three unreachable length checks. Shared test helpers (vector loading, hex/base64, `replay` for injecting recorded randomness) are in `test/helpers.js`.
 
 You only need the test-vector generator when changing what the vectors cover. It needs `uv`; see `tools/gen-vectors/README.md`. The generated files in `test/vectors/` are committed, so tests don't need Python.
-
-## Loading in Thunderbird (task 4.0)
-
-The add-on has never run in Thunderbird. The Experiment logs one `[omemo]` line per hook call (lengths and addresses only, never message text), so a single run shows whether the hooks work.
-
-1. `manifest.json` is filled in (2026-09-25): author Precision Crab, homepage the GitHub repo, gecko `id` `thunderbird-omemo@precisioncrab`. The id is a permanent name tag, not a mailbox; it follows Daynizer's add-on id pattern and can still change until the add-on is first published.
-2. You need Thunderbird 128 or newer, with an XMPP account under Chat and a second account or client to talk to.
-3. Build the add-on file: `npm run package` in `thunderbird-omemo/` writes `dist/thunderbird-omemo-<version>.xpi` (it bundles the crypto core first; the version is `manifest.json`'s). Rebuild after any change, reinstall, and restart Thunderbird: it keeps running the old build otherwise, and since 0.0.8 the core loads under a fresh resource:// name each time and is checked against the add-on's version, so a stale cached core (which bit 0.0.7) shows up as an error instead of silently running. If the same version is rebuilt while Thunderbird holds its file open, the script adds the local time to the name (`-HHMMSS`) and says so.
-4. Install it: Add-ons and Themes > gear icon > Install Add-on From File, then pick the newest `dist/thunderbird-omemo-<version>.xpi`. **Install over the old version; don't remove it first** (a removed add-on waits in an undo state, and reinstalling it then can get it removed at the next restart, as happened on 2026-09-25). The add-on is unsigned, so `xpinstall.signatures.required` must be `false` (Config Editor) for it to stay installed across restarts, as Daynizer's notes found. "Install Add-on From File" only takes an `.xpi`, never `manifest.json`. The alternative is a temporary add-on: Add-ons and Themes > gear icon > Debug Add-ons > This Thunderbird > Load Temporary Add-on, then pick `manifest.json` (it unloads when Thunderbird closes). Both paths are the ones Daynizer's add-on uses.
-5. Open either console: Ctrl+Shift+J (Thunderbird's Error Console), or Add-ons and Themes > gear > Debug Add-ons > This Thunderbird > Inspect (the add-on's own console, which also gets every Experiment line as of 2026-09-25). After installing you should see `[omemo] loaded resource:///modules/xmpp-base.sys.mjs; exports: ...` `[omemo] crypto self-test passed (...)` and `[omemo] hooks installed on dispatchMessage and onMessageStanza`. The self-test line also says whether Thunderbird's module scope has Web Crypto; if not, an extra line says it switched to Thunderbird's own random generator. (The background script's own lines are in Debug Add-ons > This Thunderbird > Inspect.)
-6. Send a message in an XMPP chat: expect `[omemo] dispatchMessage hook fired: to ...`.
-7. Receive a message: expect `[omemo] onMessageStanza hook fired: from ...`.
-8. Disconnect and reconnect the XMPP account, then repeat 6 and 7.
-9. Copy every `[omemo]` line, plus any error mentioning omemo or the add-on, into `docs/STATUS.md` or a chat with the assistant.
-
-Thunderbird's built-in OTR crashed Thunderbird during testing on 2026-09-25 (see STATUS). To turn it off: Settings > General > Config Editor, set `chat.otr.enable` to false, restart.
-
-If step 5 shows an error instead, the most likely cause is the module path or an export name (the check runs before anything is patched, so chat keeps working). The error names what's missing.
 
 ## Layout
 
 | Path | What it is |
 |---|---|
-| `src/experiment/` | Privileged Experiment API that wraps Thunderbird's XMPP send/receive functions, with `[omemo]` console diagnostics; it loads the core and hands Thunderbird's objects to `src/omemo/bridge.js` (see "Loading in Thunderbird") |
-| `src/background.js` | Ordinary WebExtension background script: starts the Experiment, passes on the encryption setting, shows diagnostics |
-| `src/options/` | The options page: encryption mode (stored in `browser.storage.local`) and QR codes for verifying Thunderbird on a phone; its script is bundled with qrcode-generator (MIT) into `dist/options.js` |
-| `scripts/` | `build.mjs` bundles the crypto core into `dist/omemo-core.mjs`; `package.mjs` builds `dist/thunderbird-omemo-<version>.xpi` |
-| `src/core.js`, `src/omemo/` | The bundle's entry, and the OMEMO layer on top of the crypto core: `store.js` (per-account key store and first-connect setup), `persist.js` (saving it), `xml.js` (parser, builder, serializer), `formats.js` (device lists, bundles, `<encrypted>`), `messages.js` (encrypting for devices and decrypting, with `OmemoError` codes) |
-| `src/crypto/` | The OMEMO crypto core. `xeddsa.js`, `keys.js`, `protobuf.js`, `x3dh.js`, `double-ratchet.js`, `payload.js` and `envelope.js` (XEP-0420, with a small strict XML parser) are done, sessions included (`serializeState`/`deserializeState`). Milestone 2 is complete |
-| `test/` | `node --test` suites, plus `vectors/`, the reference data they check against |
+| `manifest.json` | WebExtension manifest: the `omemoXmpp` Experiment API, background script, options page. Gecko id `thunderbird-omemo@precisioncrab` (permanent) |
+| `src/experiment/` | The privileged Experiment (`implementation.js`, `schema.json`). It loads the bundled core under a fresh `resource://` name, checks its version, runs the crypto self-test, hands Thunderbird's XMPP prototypes and services to `installBridge`, registers the `/omemo` chat command, and forwards events (diagnostics, `onShowPage`) to the background script |
+| `src/background.js` | Ordinary WebExtension background script: passes the options page's setting to the Experiment, opens the options page as a tab for `/omemo help` and `/omemo qr`, shows diagnostics |
+| `src/options/` | The options page, in three tabs: Settings (encryption mode, in `browser.storage.local`), Verify on phone (QR codes), Instructions (every `/omemo` command, devices, trust, what the add-on can access). Its script is bundled with qrcode-generator (MIT) into `dist/options.js` |
+| `src/core.js` | Entry of the core bundle (`dist/omemo-core.mjs`): exports the crypto core, the OMEMO layer and `installBridge` |
+| `src/omemo/bridge.js` | Everything that touches Thunderbird: the hooks on `XMPPConversationPrototype` and `XMPPAccountPrototype`, the per-account lifecycle, encrypt on send, decrypt on receive (carbons included), the padlock and lock button, the `/omemo` command, trust decisions per recipient, stale-device filtering, the 6-hourly upkeep timer. Written against injected Thunderbird objects so it runs in Node against `test/fake-thunderbird.js` |
+| `src/omemo/account.js` | One account's OMEMO over PEP: load or create the key store, publish device lists and bundles, handle device list pushes, fetch contacts' devices and bundles, rotate the signed prekey (`maintain()`), remove our own old devices |
+| `src/omemo/store.js` | The per-account key store: device id, identity key, per-namespace signed prekey (plus replaced ones kept 30 days) and 100 pre keys, sessions, device lists (`firstSeen`, labels), encryption choices, trust per identity key, each device's last key and last message time. Strict JSON load; newer fields are optional so older stores load |
+| `src/omemo/persist.js` | Batched, non-overlapping, atomic saves to `<profile>/omemo/<jid>.json` |
+| `src/omemo/messages.js` | Encrypt one body for many devices; decrypt with session start/reuse; `OmemoError` codes |
+| `src/omemo/trust.js` | "Blind trust before verification" (Conversations' model): decides per device key whether to encrypt to it, and what to tell the user |
+| `src/omemo/fingerprint.js` | Fingerprints in Conversations' hex groups, and the `xmpp:` URI for QR verification |
+| `src/omemo/formats.js`, `xml.js`, `xmlnode.js` | OMEMO XML (device lists, bundles, `<encrypted>`) for both namespaces; a strict XML parser/builder/serializer; conversion to and from Thunderbird's `XMLNode` (escaping attribute values, which Thunderbird doesn't) and a `sendIq` with a timeout |
+| `src/omemo/pep.js`, `caps.js` | PEP publish/fetch/notifications; the XEP-0115 caps hash so servers push OMEMO device lists to us |
+| `src/crypto/` | The crypto core on `@noble` (MIT): `xeddsa.js`, `keys.js`, `protobuf.js`, `x3dh.js`, `double-ratchet.js` (per-namespace profiles, transactional decrypt, `serializeState`), `payload.js`, `envelope.js` (XEP-0420), `random.js` (all randomness, injectable), `self-test.js` |
+| `scripts/` | `build.mjs` bundles the core and the options script; `package.mjs` builds `dist/thunderbird-omemo-<version>.xpi` (reproducible zip) |
+| `test/` | `node --test` suites; `fake-thunderbird.js` and `fake-pep.js` stand in for Thunderbird's XMPP code and a pubsub server; `vectors/` is the reference data |
 | `tools/gen-vectors/` | Python generator for `test/vectors/` (dev only, MIT-licensed dependencies only) |
-| `docs/` | `PLAN.md` (architecture, milestones), `TASKS.md` (task list and per-namespace constants), `STATUS.md` (state and log), this file |
+| `docs/` | `PLAN.md`, `TASKS.md`, `STATUS.md`, this file |
 
-## What's real
+## Reviewing the code
 
-- **Thunderbird hook points:** confirmed by reading comm-central's source (`docs/PLAN.md`, "Milestone 0 findings"). The hooks (now in `src/omemo/bridge.js`) are confirmed working in Thunderbird 156 (2026-09-25).
-- **Finished crypto modules:** each is checked byte for byte against the reference implementation where one exists, using the data in `test/vectors/`.
-- **The per-namespace constants table** in `docs/TASKS.md` is confirmed for twomemo fully, and for oldmemo's key schedule. oldmemo's wire framing is not confirmed until the interop tests (4.12).
-- **Remaining `TODO(verify)` comments** mark spec details in `src/experiment/` that later tasks replace or confirm.
+A suggested reading order, from the protocol outward:
+
+1. `src/crypto/` with its tests: XEdDSA, X3DH, the Double Ratchet and payload encryption, checked byte for byte against python-omemo's twomemo vectors (`test/vectors/`). oldmemo has no permissive reference, so its key schedule is checked against the generic MIT libraries and its wire framing against real Cheogram clients only.
+2. `src/omemo/store.js`, `messages.js`, `trust.js`: key storage, the message layer, and trust decisions.
+3. `src/omemo/account.js`, `pep.js`, `formats.js`: what gets published and fetched.
+4. `src/omemo/bridge.js` and `src/experiment/implementation.js`: the Thunderbird integration, where a bug could leak plaintext or mislabel a message as encrypted.
+
+Properties worth checking:
+
+- **No plaintext fallback:** in a conversation that should be encrypted, a message that can't be encrypted is not sent at all (`sendEncrypted` throws; `dispatchMessage` shows an error).
+- **The padlock is only on what was decrypted:** `writeMessage` is flagged `isEncrypted` only while Thunderbird handles a message we decrypted from a trusted device (the `markEncrypted` counter in `bridge.js`).
+- **Decryption is transactional:** ratchet state commits only after the MAC verifies; forged or replayed messages can't change session state.
+- **Trust:** after a contact has one verified device, a new or changed key is held back until the user decides; distrusted keys are never used.
+- **Sender binding:** the XEP-0420 envelope's `<from>` must match the stanza's sender.
+
+Known limits (also in `docs/STATUS.md`, "Open risks"): keys are stored unencrypted in the profile, as in other desktop clients; OTR/OMEMO coexistence isn't handled (users are told to turn OTR off); oldmemo interop is confirmed with Cheogram only; the Experiment depends on Thunderbird internals (tested on Thunderbird 156); the `padlock:` log lines in `bridge.js` are temporary diagnostics.
+
+## Running it in Thunderbird
+
+1. `npm run package` writes `dist/thunderbird-omemo-<version>.xpi` (the version is `manifest.json`'s). If the same version is rebuilt while Thunderbird holds the file open, the script adds the local time to the name.
+2. Thunderbird needs `xpinstall.signatures.required` set to `false` (Settings > General > Config Editor), since the add-on is unsigned, and `chat.otr.enable` set to `false` (Thunderbird's OTR crashed it in testing).
+3. Add-ons and Themes > gear icon > Install Add-on From File, pick the `.xpi`, restart. **Install over the old version; don't remove it first** (a removed add-on waits in an undo state, and reinstalling then can get it removed at the next restart). A temporary add-on also works: Debug Add-ons > This Thunderbird > Load Temporary Add-on, pick `manifest.json`.
+4. Every build loads the core under a fresh `resource://` name and checks it against the add-on's version, so a stale cached core shows up as an error instead of silently running.
+5. Diagnostics: Add-ons and Themes > gear > Debug Add-ons > This Thunderbird > Inspect shows every `[omemo]` line (never message text). Expect `crypto self-test passed`, `hooks installed`, and `OMEMO ready for <jid>` per account.
 
 ## Conventions and gotchas
 
-- **Licensing:** the repo stays MPL-2.0 with permissive dependencies, and no copyleft code anywhere, including dev tooling. That keeps it adoptable by Thunderbird. Every oldmemo implementation is GPL/AGPL, so don't add one as a reference.
-- **Randomness is injectable:** crypto functions take an optional `random(n)`. Tests replay the reference's recorded random draws in the order the reference consumed them.
-- **Naming:** protobuf field names are the same across both namespaces (`n`, `pn`, `dhPub`, `ciphertext`, `preKeyId`, ...), so the ratchet code can treat both alike. Framing that differs (oldmemo's `0x33` byte, where the MAC goes) belongs in the ratchet's per-namespace profile.
-- **Line endings:** Windows git converts LF to CRLF on checkout. The warnings are harmless. This repo has `core.filemode false`, because the initial commit came from a Linux sandbox with executable bits set.
-- **Finishing a task, every time:** check it off in `docs/TASKS.md`, update `docs/STATUS.md` (state table, next steps, log) and any other doc that names it as next, run `npm test`, then commit and push with a message describing what changed. The project-root `NEXT.md` and `_context.md` sit outside the repo and need the same update. No AI attribution trailers.
-- **No addons.thunderbird.net listing:** ATN rejects Experiment add-ons (2026-09-26), so releases are self-distributed unsigned `.xpi` files.
+- **The repo is public.** Keep personal details out of commits and docs (names, personal XMPP addresses, local paths); tests and docs use `test1`/`test2@test.snikket.chat`. Commits use "Precision Crab" and the GitHub no-reply address.
+- **Licensing:** MPL-2.0 with permissive dependencies, and no copyleft code anywhere, dev tooling included, so Thunderbird could adopt it. Every oldmemo implementation is GPL/AGPL, so don't add one as a reference.
+- **Randomness and clocks are injectable:** crypto functions take `random(n)`; the store, account and bridge take `now()`. Tests replay the reference's recorded random draws.
+- **Naming:** protobuf field names are the same across both namespaces (`n`, `pn`, `dhPub`, `ciphertext`, `preKeyId`, ...). Framing that differs (oldmemo's `0x33` byte, where the MAC goes) belongs in the ratchet's per-namespace profile.
+- **Chat text:** Thunderbird turns text smileys like `):` into emoji in every message, including the add-on's notices, so avoid them in `say()` strings.
+- **Line endings:** Windows git converts LF to CRLF on checkout; the warnings are harmless. `core.filemode false` is set.
+- **Finishing a change:** run `npm test`, update `docs/STATUS.md` (state table, next steps, a log entry) and any doc that names the change as next, then commit and push. No AI attribution trailers.
+- **Releases:** bump `manifest.json` and `package.json`, `npm run package`, then a GitHub release with the `.xpi` attached. There's no addons.thunderbird.net listing: it doesn't accept Experiment add-ons.
