@@ -280,7 +280,6 @@ test("a message our own phone sent arrives as a sent carbon: decrypted, shown as
   const shown = conv.shown.filter((m) => !m.flags.system);
   assert.deepEqual(shown.map((m) => [m.text, m.flags.outgoing, m.flags.isEncrypted]), [["Ooo", true, true]]);
   assert.notEqual(t2.lastMessageFrom(T2, myPhone.deviceId), null, "the phone's last message is recorded");
-  assert.ok(lines.includes("padlock: our own message from another device was shown as encrypted"));
 });
 
 test("our own oldmemo-only phone gets a copy of what we send", async () => {

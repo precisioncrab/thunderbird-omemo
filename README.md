@@ -23,7 +23,7 @@ milestones, and the project's licensing/distribution plan live in
 
 ## Status
 
-Early release (0.1.0). In Thunderbird (tested on Thunderbird 156 on Windows, with a Snikket
+Early release (0.1.1). In Thunderbird (tested on Thunderbird 156 on Windows, with a Snikket
 server), it encrypts and decrypts one-to-one XMPP chats with OMEMO, in both the older
 namespace Conversations-family apps use and the newer one, and interoperates with
 Cheogram chats in both directions. What's in place:

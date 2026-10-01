@@ -39,11 +39,11 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 
 ## Next steps
 
-0. **Release 0.1.1 with the code review fixes** (`docs/CODE_REVIEW.md`, fixed 2026-09-26). The Thunderbird run passed (send, then quit at once). Left: the file rename can only be seen with an account that has `+` or other unusual characters in its JID (the test accounts don't); then build and publish 0.1.1.
+0. **Publish 0.1.1** (built 2026-10-01: `dist/thunderbird-omemo-0.1.1.xpi`, code review fixes plus the `padlock:` log lines removed). Left: install it over 0.1.0 in Thunderbird once (version shows 0.1.1, a message sends and decrypts), then publish the GitHub release `v0.1.1` with the `.xpi`. The store file rename can only be seen with an account that has `+` or other unusual characters in its JID (the test accounts don't).
 1. **Watch the 0.1.0 release:** GitHub issues from users, and whether other Thunderbird versions (ESR 128/140, newer releases) load it. Keep a tested-versions note in the README.
 2. **Pro (paid, $10):** milestone 8 calling in a private repo, sold on Gumroad. Decide how Pro installs next to or over the free add-on (same add-on id so it replaces the free one is the simplest), and which small, generic hooks go into the public repo.
 3. **4.12 interop matrix** with other OMEMO clients (Conversations, Gajim, Dino, Monal), and **OTR/OMEMO coexistence** (the README tells users to turn OTR off until then).
-4. Small: remove the `padlock:` log lines once the lock grouping is confirmed; watch for the first signed prekey rotation (about 2026-10-02).
+4. Small: watch for the first signed prekey rotation (about 2026-10-02).
 
 ## Open risks and decisions
 
@@ -56,6 +56,9 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 - **The project-root docs are not in git:** `NEXT.md`, `_context.md` and `AGENTS.md` sit outside the repo. Consider moving them in.
 
 ## Log
+
+### 2026-10-01
+- **0.1.1 built, not yet published.** Version 0.1.1 in `manifest.json`, `package.json`, `package-lock.json` and the README. Removed the temporary `padlock:` diagnostics from `bridge.js` (the lock grouping was confirmed 2026-09-26) and the test line that checked for them; the padlock itself is still tested. 265 tests pass. `npm run package` gives `dist/thunderbird-omemo-0.1.1.xpi`.
 
 ### 2026-09-26
 - **Manual test checklist; the "verified" lock explained.** The maintainer saw no "verified" on the lock, though `/omemo` lists every device as verified (both stores agree, so the bridge returns `ENCRYPTION_TRUSTED`). Thunderbird's `ChatEncryption.sys.mjs` (156.0.1) labels the header's encryption button Insecure / Unverified / Private; there is no "Verified", and our trusted state reads **Private**. The message padlocks the maintainer looked at only mean "encrypted". The README and the Instructions tab promised "verified"; they now say "Private" and explain the difference. The same screenshot confirms the padlock grouping: follow-on messages from the same sender have no padlock, since Thunderbird draws it on the sender line only, so the `padlock:` log lines can go. New `docs/MANUAL-TESTS.md`: a checklist for everything only a person in Thunderbird can check (the header button, the three settings, the 0.1.1 fixes, other OMEMO apps, Thunderbird versions, OTR, the dated checks).

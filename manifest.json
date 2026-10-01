@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "OMEMO for Thunderbird Chat",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Adds OMEMO end-to-end encryption to XMPP conversations in Thunderbird Chat.",
   "author": "Precision Crab",
   "homepage_url": "https://github.com/precisioncrab/thunderbird-omemo",

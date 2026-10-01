@@ -58,7 +58,7 @@ Properties worth checking:
 - **Trust:** after a contact has one verified device, a new or changed key is held back until the user decides; distrusted keys are never used.
 - **Sender binding:** the XEP-0420 envelope's `<from>` must match the stanza's sender.
 
-Known limits (also in `docs/STATUS.md`, "Open risks"): keys are stored unencrypted in the profile, as in other desktop clients; OTR/OMEMO coexistence isn't handled (users are told to turn OTR off); oldmemo interop is confirmed with Cheogram only; the Experiment depends on Thunderbird internals (tested on Thunderbird 156); the `padlock:` log lines in `bridge.js` are temporary diagnostics.
+Known limits (also in `docs/STATUS.md`, "Open risks"): keys are stored unencrypted in the profile, as in other desktop clients; OTR/OMEMO coexistence isn't handled (users are told to turn OTR off); oldmemo interop is confirmed with Cheogram only; the Experiment depends on Thunderbird internals (tested on Thunderbird 156).
 
 ## Running it in Thunderbird
 

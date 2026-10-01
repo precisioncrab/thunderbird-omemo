@@ -798,18 +798,11 @@ export function installBridge(tb) {
       return undefined;
     }
     if (outcome === "decrypted") {
-      const kind = aStanza.getChildren("sent").some((c) => c.uri === NS_CARBONS) ? "our own message from another device"
-        : aStanza.getChildren("received").some((c) => c.uri === NS_CARBONS) ? "a carbon of an incoming message" : "an incoming message";
-      const writesBefore = markedWrites;
       markEncrypted++;
       try {
         return originals.get("onMessageStanza").call(this, aStanza, ...rest);
       } finally {
         markEncrypted--;
-        // Diagnostics for a missing padlock (2026-09-26).
-        log(markedWrites > writesBefore
-          ? `padlock: ${kind} was shown as encrypted`
-          : `padlock: Thunderbird didn't show ${kind} while handling it, so it gets no padlock`);
       }
     }
     safely("onMessageStanza diagnostics", () => {
@@ -828,16 +821,12 @@ export function installBridge(tb) {
   // conversation (the incoming message, or a carbon of our own) gets the
   // encrypted flag, so it shows a padlock like our local echo does.
   let markEncrypted = 0;
-  let markedWrites = 0;
   const inheritedWriteMessage = conv.writeMessage;
   if (typeof inheritedWriteMessage === "function") {
     patchOwn(conv, "writeMessage", {
       value(who, text, properties) {
         if (markEncrypted > 0 && properties && !properties.system && !properties.error) {
           properties = { ...properties, isEncrypted: true };
-          markedWrites++;
-        } else if (markEncrypted > 0) {
-          log(`padlock: not marking a message written with ${properties ? `flags ${Object.keys(properties).join(", ")}` : "no flags"}`);
         }
         return inheritedWriteMessage.call(this, who, text, properties);
       },
