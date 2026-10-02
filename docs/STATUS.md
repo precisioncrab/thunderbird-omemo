@@ -41,7 +41,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 
 0. ~~Publish 0.1.1~~ **Released 2026-10-02** (https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.1). The store file rename can only be seen with an account that has `+` or other unusual characters in its JID (the test accounts don't).
 1. **Watch the releases:** GitHub issues from users, and whether other Thunderbird versions (ESR 128/140, newer releases) load it. Keep a tested-versions note in the README.
-2. **Pro (paid, $10):** milestone 8 calling in a private repo, sold on Gumroad. Decide how Pro installs next to or over the free add-on (same add-on id so it replaces the free one is the simplest), and which small, generic hooks go into the public repo.
+2. **Pro (paid, $10):** milestone 8 calling in a private repo, sold on Gumroad. Decided 2026-10-02: same add-on id, so Pro replaces the free add-on. First: run the calling spike; then the Jingle signaling modules. Generic hooks it needs land in this repo first.
 3. **4.12 interop matrix** with other OMEMO clients (Conversations, Gajim, Dino, Monal), and **OTR/OMEMO coexistence** (the README tells users to turn OTR off until then).
 4. Small: watch for the first signed prekey rotation (due 2026-10-02; the console logs `replaced our signed prekey (a week old)`).
 
@@ -58,6 +58,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 ## Log
 
 ### 2026-10-02
+- **Pro started; TASKS.md caught up.** **Decided 2026-10-02 (the maintainer):** Pro uses the same add-on id as this one, so installing it replaces the free add-on and keeps the keys; it's built from a private clone of this repo with the calling code in new files. Generic hooks calling needs land here first. A calling spike (microphone, STUN, a loopback DTLS-SRTP call, speakers, in a Thunderbird add-on window) is written in the Pro repo, awaiting a run. In `docs/TASKS.md`, 3.5-3.9 and 4.1-4.11 are checked off (all confirmed in Thunderbird long ago), leaving 2.11, 3.10 and 4.12.
 - **0.1.1 released publicly.** https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.1 with `thunderbird-omemo-0.1.1.xpi`, marked Latest. The notes list the six code review fixes and say to install over 0.1.0.
 - **0.1.1 passes in Thunderbird.** The maintainer installed 0.1.1 over 0.1.0: the crypto self-test passed, test1 published both namespaces with the same device id, two messages from test2's Cheogram phone (oldmemo) decrypted, and both replies went out encrypted (twomemo to 1 device, oldmemo to 2). No `padlock:` lines, as intended. The signed prekey rotation hadn't fired at startup (no `replaced our signed prekey` line); the keys date from 2026-09-25, so the 6-hourly upkeep should catch it later on 2026-10-02. Next: publish the GitHub release `v0.1.1`.
 
