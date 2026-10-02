@@ -39,11 +39,11 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 
 ## Next steps
 
-0. **Publish 0.1.1** (built 2026-10-01: `dist/thunderbird-omemo-0.1.1.xpi`, code review fixes plus the `padlock:` log lines removed). Left: install it over 0.1.0 in Thunderbird once (version shows 0.1.1, a message sends and decrypts), then publish the GitHub release `v0.1.1` with the `.xpi`. The store file rename can only be seen with an account that has `+` or other unusual characters in its JID (the test accounts don't).
+0. **Publish 0.1.1** (built 2026-10-01: `dist/thunderbird-omemo-0.1.1.xpi`, code review fixes plus the `padlock:` log lines removed; passed in Thunderbird 2026-10-02). Left: publish the GitHub release `v0.1.1` with the `.xpi`. The store file rename can only be seen with an account that has `+` or other unusual characters in its JID (the test accounts don't).
 1. **Watch the 0.1.0 release:** GitHub issues from users, and whether other Thunderbird versions (ESR 128/140, newer releases) load it. Keep a tested-versions note in the README.
 2. **Pro (paid, $10):** milestone 8 calling in a private repo, sold on Gumroad. Decide how Pro installs next to or over the free add-on (same add-on id so it replaces the free one is the simplest), and which small, generic hooks go into the public repo.
 3. **4.12 interop matrix** with other OMEMO clients (Conversations, Gajim, Dino, Monal), and **OTR/OMEMO coexistence** (the README tells users to turn OTR off until then).
-4. Small: watch for the first signed prekey rotation (about 2026-10-02).
+4. Small: watch for the first signed prekey rotation (due 2026-10-02; the console logs `replaced our signed prekey (a week old)`).
 
 ## Open risks and decisions
 
@@ -56,6 +56,9 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 - **The project-root docs are not in git:** `NEXT.md`, `_context.md` and `AGENTS.md` sit outside the repo. Consider moving them in.
 
 ## Log
+
+### 2026-10-02
+- **0.1.1 passes in Thunderbird.** The maintainer installed 0.1.1 over 0.1.0: the crypto self-test passed, test1 published both namespaces with the same device id, two messages from test2's Cheogram phone (oldmemo) decrypted, and both replies went out encrypted (twomemo to 1 device, oldmemo to 2). No `padlock:` lines, as intended. The signed prekey rotation hadn't fired at startup (no `replaced our signed prekey` line); the keys date from 2026-09-25, so the 6-hourly upkeep should catch it later on 2026-10-02. Next: publish the GitHub release `v0.1.1`.
 
 ### 2026-10-01
 - **0.1.1 built, not yet published.** Version 0.1.1 in `manifest.json`, `package.json`, `package-lock.json` and the README. Removed the temporary `padlock:` diagnostics from `bridge.js` (the lock grouping was confirmed 2026-09-26) and the test line that checked for them; the padlock itself is still tested. 265 tests pass. `npm run package` gives `dist/thunderbird-omemo-0.1.1.xpi`.
