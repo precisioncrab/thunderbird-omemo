@@ -2,9 +2,9 @@
 
 _Current state and session log, newest on top. The task list is `docs/TASKS.md`; architecture and milestones are in `docs/PLAN.md`; setup and gotchas are in `docs/HANDOFF.md`._
 
-## Current state (2026-09-26)
+## Current state (2026-10-02)
 
-**Encrypted 1:1 chat works in Thunderbird (version 0.1.0, released publicly 2026-09-26).** Milestones 2-4 are done and confirmed in the maintainer's Thunderbird 156 with real Cheogram phones in both directions; milestone 5 (trust, verification, QR codes) is built and working. The release is opt-in (options page, lock button, `/omemo` command). Milestone 6 (hardening) is in 0.0.15. Open: 4.12's full interop matrix, packaging as a self-distributed unsigned `.xpi` (milestone 7; addons.thunderbird.net rejects Experiment add-ons), calling (milestone 8, after v1).
+**Encrypted 1:1 chat works in Thunderbird (0.1.0 released publicly 2026-09-26; 0.1.1, the code review fixes, released 2026-10-02).** Milestones 2-4 are done and confirmed in the maintainer's Thunderbird 156 with real Cheogram phones in both directions; milestone 5 (trust, verification, QR codes) is built and working. The release is opt-in (options page, lock button, `/omemo` command). Milestone 6 (hardening) is in 0.0.15. Open: 4.12's full interop matrix, packaging as a self-distributed unsigned `.xpi` (milestone 7; addons.thunderbird.net rejects Experiment add-ons), calling (milestone 8, after v1).
 
 | Area | State | Task |
 |---|---|---|
@@ -39,8 +39,8 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 
 ## Next steps
 
-0. **Publish 0.1.1** (built 2026-10-01: `dist/thunderbird-omemo-0.1.1.xpi`, code review fixes plus the `padlock:` log lines removed; passed in Thunderbird 2026-10-02). Left: publish the GitHub release `v0.1.1` with the `.xpi`. The store file rename can only be seen with an account that has `+` or other unusual characters in its JID (the test accounts don't).
-1. **Watch the 0.1.0 release:** GitHub issues from users, and whether other Thunderbird versions (ESR 128/140, newer releases) load it. Keep a tested-versions note in the README.
+0. ~~Publish 0.1.1~~ **Released 2026-10-02** (https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.1). The store file rename can only be seen with an account that has `+` or other unusual characters in its JID (the test accounts don't).
+1. **Watch the releases:** GitHub issues from users, and whether other Thunderbird versions (ESR 128/140, newer releases) load it. Keep a tested-versions note in the README.
 2. **Pro (paid, $10):** milestone 8 calling in a private repo, sold on Gumroad. Decide how Pro installs next to or over the free add-on (same add-on id so it replaces the free one is the simplest), and which small, generic hooks go into the public repo.
 3. **4.12 interop matrix** with other OMEMO clients (Conversations, Gajim, Dino, Monal), and **OTR/OMEMO coexistence** (the README tells users to turn OTR off until then).
 4. Small: watch for the first signed prekey rotation (due 2026-10-02; the console logs `replaced our signed prekey (a week old)`).
@@ -58,6 +58,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 ## Log
 
 ### 2026-10-02
+- **0.1.1 released publicly.** https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.1 with `thunderbird-omemo-0.1.1.xpi`, marked Latest. The notes list the six code review fixes and say to install over 0.1.0.
 - **0.1.1 passes in Thunderbird.** The maintainer installed 0.1.1 over 0.1.0: the crypto self-test passed, test1 published both namespaces with the same device id, two messages from test2's Cheogram phone (oldmemo) decrypted, and both replies went out encrypted (twomemo to 1 device, oldmemo to 2). No `padlock:` lines, as intended. The signed prekey rotation hadn't fired at startup (no `replaced our signed prekey` line); the keys date from 2026-09-25, so the 6-hourly upkeep should catch it later on 2026-10-02. Next: publish the GitHub release `v0.1.1`.
 
 ### 2026-10-01
