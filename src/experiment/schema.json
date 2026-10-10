@@ -45,9 +45,82 @@
         "description": "This Thunderbird's OMEMO device on each connected XMPP account, with its fingerprint and the xmpp: link Conversations-family apps scan to verify it.",
         "async": true,
         "parameters": []
+      },
+      {
+        "name": "addFeatures",
+        "type": "function",
+        "description": "Generic hook: adds service discovery features to our disco#info and caps hash (for example Jingle's, for calls). Best called before install(), so the first presence carries them.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "features",
+            "type": "array",
+            "items": { "type": "string" }
+          }
+        ]
+      },
+      {
+        "name": "watchStanzas",
+        "type": "function",
+        "description": "Generic hook: IQ gets/sets with a child in one of the iq namespaces, and messages with a child (or a carbon-forwarded message with a child) in one of the message namespaces, go to onStanza instead of Thunderbird. Replaces any earlier watch. The add-on answers watched IQs itself with sendStanza.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "filter",
+            "type": "object",
+            "properties": {
+              "iq": { "type": "array", "items": { "type": "string" }, "optional": true },
+              "message": { "type": "array", "items": { "type": "string" }, "optional": true }
+            }
+          }
+        ]
+      },
+      {
+        "name": "getAccounts",
+        "type": "function",
+        "description": "Generic hook: the connected XMPP accounts, as { jid (bare), fullJid }.",
+        "async": true,
+        "parameters": []
+      },
+      {
+        "name": "sendStanza",
+        "type": "function",
+        "description": "Generic hook: sends a stanza, given as XML text, from the connected account with this bare JID.",
+        "async": true,
+        "parameters": [
+          { "name": "account", "type": "string" },
+          { "name": "xml", "type": "string" }
+        ]
+      },
+      {
+        "name": "sendIq",
+        "type": "function",
+        "description": "Generic hook: sends an IQ, given as XML text, from the connected account with this bare JID, and resolves with the reply (result or error) as XML text. Rejects when no reply comes in time.",
+        "async": true,
+        "parameters": [
+          { "name": "account", "type": "string" },
+          { "name": "xml", "type": "string" },
+          { "name": "timeoutMs", "type": "integer", "optional": true }
+        ]
       }
     ],
     "events": [
+      {
+        "name": "onStanza",
+        "type": "function",
+        "description": "Generic hook: a stanza matching watchStanzas, as { account (bare JID), kind (iq or message), xml }.",
+        "parameters": [
+          {
+            "name": "stanza",
+            "type": "object",
+            "properties": {
+              "account": { "type": "string" },
+              "kind": { "type": "string" },
+              "xml": { "type": "string" }
+            }
+          }
+        ]
+      },
       {
         "name": "onDiagnostic",
         "type": "function",

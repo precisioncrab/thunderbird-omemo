@@ -31,7 +31,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 | Options page tabs and Instructions (`src/options/`) | **Confirmed** (0.0.15): Settings, Verify on phone and Instructions tabs; `/omemo help` and `/omemo qr` open the page as a Thunderbird tab | |
 | Packaging (milestone 7) | **Done: 0.1.0 released** on GitHub (free, unsigned `.xpi`, sponsor button). Earlier notes: Self-distributed unsigned `.xpi` (ATN rejects Experiment add-ons); whether to charge is undecided. Done: the "What this add-on can access" section (README, Instructions tab) | `docs/PLAN.md` |
 
-**Tests:** `npm test` gives 265 passing. `npm run test:coverage` shows the crypto core fully covered apart from three unreachable length checks.
+**Tests:** `npm test` gives 267 passing. `npm run test:coverage` shows the crypto core fully covered apart from three unreachable length checks.
 
 **Repo:** public GitHub `precisioncrab/thunderbird-omemo`, branch `main`, since the 0.1.0 release (2026-09-26), starting from one fresh commit. The full development history before that is in the private `precisioncrab/thunderbird-omemo-dev` (local branch `dev-history`, remote `archive`). Commits use "Precision Crab" and the GitHub no-reply address. The repo is public: keep personal details (names, personal XMPP addresses) out of it; tests and docs use the test1/test2@test.snikket.chat accounts.
 
@@ -56,6 +56,9 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 - **The project-root docs are not in git:** `NEXT.md`, `_context.md` and `AGENTS.md` sit outside the repo. Consider moving them in.
 
 ## Log
+
+### 2026-10-10
+- **Generic stanza hook (for Pro's calling; not yet run in Thunderbird).** `bridge.js`: `watchStanzas` (IQ gets/sets and messages, carbons included, with a child in chosen namespaces go to a handler instead of Thunderbird) and `addFeatures` (extra disco#info features, in the caps hash, removed on uninstall). The Experiment exposes them as `addFeatures`, `watchStanzas`, the `onStanza` event (stanzas as XML text), `getAccounts`, `sendStanza` and `sendIq`. Two new bridge tests (267 pass); the Experiment's new calls were also driven against the fake Thunderbird in a throwaway harness. No user-visible change: nothing watches or adds features unless code built on this add-on asks.
 
 ### 2026-10-02
 - **Pro started; TASKS.md caught up.** **Decided 2026-10-02 (the maintainer):** Pro uses the same add-on id as this one, so installing it replaces the free add-on and keeps the keys; it's built from a private clone of this repo with the calling code in new files. Generic hooks calling needs land here first. A calling spike (microphone, STUN, a loopback DTLS-SRTP call, speakers, in a Thunderbird add-on window) is written in the Pro repo, awaiting a run. In `docs/TASKS.md`, 3.5-3.9 and 4.1-4.11 are checked off (all confirmed in Thunderbird long ago), leaving 2.11, 3.10 and 4.12.

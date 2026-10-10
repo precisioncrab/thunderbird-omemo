@@ -56,6 +56,18 @@ const _outgoingSinks = new Set();
 const _incomingSinks = new Set();
 const _diagnosticSinks = new Set();
 const _pageSinks = new Set();
+const _stanzaSinks = new Set();
+
+// The generic stanza hook (watchStanzas, sendStanza, sendIq, addFeatures):
+// for code built on this add-on, such as calling. Kept here so they apply
+// whether they're set before or after install().
+let _watchFilter = { iq: [], message: [] };
+let _unwatch = null;
+const _extraFeatures = [];
+let _xmppBase = null;
+let _Stanza = null;
+let _timers = null;
+const SEND_IQ_TIMEOUT_MS = 30000;
 
 function fireAll(sinks, ...args) {
   for (const fire of sinks) {
@@ -161,6 +173,40 @@ function connectedXmppAccounts(xmppBase) {
     .filter((p) => p && xmppBase.XMPPAccountPrototype.isPrototypeOf(p));
 }
 
+/** A stanza as XML text, for the add-on's own code. */
+function stanzaToXml(stanza) {
+  return _core.xml.serialize(_core.xmlnode.fromXmlNode(stanza));
+}
+
+/** Routes watched stanzas to onStanza (replacing any earlier watch). */
+function applyWatch() {
+  _unwatch?.();
+  _unwatch = null;
+  if (!_bridge || (!_watchFilter.iq.length && !_watchFilter.message.length)) {
+    return;
+  }
+  _unwatch = _bridge.watchStanzas(_watchFilter, (account, stanza, kind) => {
+    fireAll(_stanzaSinks, {
+      account: _bridge.bareJidOf(account),
+      kind,
+      xml: stanzaToXml(stanza),
+    });
+  });
+}
+
+/** The connected XMPP account with this bare JID, and the stanza for the XML. */
+function accountAndStanza(jid, xml) {
+  if (!_bridge) {
+    throw new Error("OMEMO isn't installed yet.");
+  }
+  const wanted = String(jid).toLowerCase();
+  const account = connectedXmppAccounts(_xmppBase).find((a) => _bridge.bareJidOf(a) === wanted);
+  if (!account) {
+    throw new Error(`No connected XMPP account ${jid}.`);
+  }
+  return { account, stanza: _core.xmlnode.toXmlNode(_core.xml.parseXml(xml), _Stanza) };
+}
+
 this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
   getAPI(context) {
     const { EventManager } = ExtensionCommon;
@@ -197,6 +243,9 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
             throw new Error("[omemo] Thunderbird's XMPP modules didn't load; see the [omemo] ERROR line.");
           }
           const { xmppBase, Stanza, SupportedFeatures, setTimeout, clearTimeout } = loaded;
+          _xmppBase = xmppBase;
+          _Stanza = Stanza;
+          _timers = { setTimeout, clearTimeout };
           _bridge = safely("installing the hooks", () => _core.bridge.installBridge({
             xmppBase,
             Stanza,
@@ -222,6 +271,8 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
             throw new Error("[omemo] The hooks didn't install; see the [omemo] ERROR line.");
           }
           addSaveBlocker(_bridge);
+          safely("adding requested disco features", () => _bridge.addFeatures(_extraFeatures));
+          safely("watching requested stanzas", applyWatch);
           safely("registering the /omemo command", () => {
             const { IMServices } = ChromeUtils.importESModule(IM_SERVICES_URL);
             IMServices.cmd.registerCommand({
@@ -249,7 +300,62 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
           safely("applying the encryption setting", () => _bridge?.updateSettings(_settings));
         },
 
+        async addFeatures(features) {
+          const list = (features ?? []).filter((f) => typeof f === "string");
+          _extraFeatures.push(...list);
+          safely("adding disco features", () => _bridge?.addFeatures(list));
+        },
+
+        async watchStanzas(filter) {
+          _watchFilter = { iq: [...(filter?.iq ?? [])], message: [...(filter?.message ?? [])] };
+          safely("watching stanzas", applyWatch);
+        },
+
+        async getAccounts() {
+          if (!_bridge) {
+            return [];
+          }
+          return safely("listing connected accounts", () => connectedXmppAccounts(_xmppBase).map((a) => ({
+            jid: _bridge.bareJidOf(a),
+            fullJid: String(a._connection?._jid?.jid ?? ""),
+          }))) ?? [];
+        },
+
+        async sendStanza(jid, xml) {
+          const { account, stanza } = accountAndStanza(jid, xml);
+          account.sendStanza(stanza);
+        },
+
+        async sendIq(jid, xml, timeoutMs) {
+          const { account, stanza } = accountAndStanza(jid, xml);
+          const wait = timeoutMs ?? SEND_IQ_TIMEOUT_MS;
+          return new Promise((resolve, reject) => {
+            let done = false;
+            const timer = _timers.setTimeout(() => {
+              if (!done) {
+                done = true;
+                reject(new Error(`No reply within ${wait / 1000} s.`));
+              }
+            }, wait);
+            try {
+              account.sendStanza(stanza, (reply) => {
+                if (!done) {
+                  done = true;
+                  _timers.clearTimeout(timer);
+                  resolve(stanzaToXml(reply));
+                }
+                return true;
+              });
+            } catch (e) {
+              done = true;
+              _timers.clearTimeout(timer);
+              reject(e);
+            }
+          });
+        },
+
         async uninstall() {
+          _unwatch = null;
           const bridge = _bridge;
           const blocker = _saveBlocker;
           _bridge = null;
@@ -265,6 +371,7 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
         onDiagnostic: event("onDiagnostic", _diagnosticSinks, _diagnosticBacklog),
         onIncomingEncrypted: event("onIncomingEncrypted", _incomingSinks),
         onShowPage: event("onShowPage", _pageSinks),
+        onStanza: event("onStanza", _stanzaSinks),
       },
     };
   }
@@ -276,6 +383,7 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
         ChromeUtils.importESModule(IM_SERVICES_URL).IMServices.cmd.unregisterCommand("omemo", PRPL_XMPP);
       });
     }
+    _unwatch = null;
     const bridge = _bridge;
     const blocker = _saveBlocker;
     _bridge = null;

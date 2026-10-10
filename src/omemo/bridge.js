@@ -21,6 +21,11 @@
  * its disco#info reply lists. A hook's own failure is logged and never
  * stops Thunderbird's original code from running.
  *
+ * Two generic hooks let other code (an add-on built on this one, such as
+ * calling) share the patched functions instead of patching them again:
+ * watchStanzas routes IQs and messages in chosen namespaces to a handler,
+ * and addFeatures adds to our disco#info.
+ *
  * Which conversations are encrypted (docs/TASKS.md 4.1) follows the user's
  * mode, set on the add-on's options page:
  *   "manual"     only chats the user switched on (the default)
@@ -159,6 +164,83 @@ export function installBridge(tb) {
   }
   const addedFeatures = NOTIFY_FEATURES.filter((f) => !SupportedFeatures.includes(f));
   SupportedFeatures.push(...addedFeatures);
+
+  /**
+   * Features other code adds to our disco#info (addFeatures), for example
+   * Jingle's for calls. Listed in the next presence's caps hash, so add them
+   * before accounts connect where possible. Removed on uninstall.
+   */
+  function addFeatures(features) {
+    const fresh = [...new Set(features)].filter((f) => typeof f === "string" && f && !SupportedFeatures.includes(f));
+    SupportedFeatures.push(...fresh);
+    addedFeatures.push(...fresh);
+    if (fresh.length) {
+      log(`disco features added: ${fresh.join(", ")}; caps ver ${ver()}`);
+    }
+    return () => {
+      for (const f of fresh) {
+        const i = SupportedFeatures.indexOf(f);
+        if (i >= 0) {
+          SupportedFeatures.splice(i, 1);
+        }
+        const j = addedFeatures.indexOf(f);
+        if (j >= 0) {
+          addedFeatures.splice(j, 1);
+        }
+      }
+    };
+  }
+
+  /**
+   * Stanzas other code handles instead of Thunderbird (watchStanzas), for
+   * example Jingle IQs and call messages. A watch names namespaces: an IQ get
+   * or set with a child element in one of `iq`, or a message with a child in
+   * one of `message` (directly, or in the message a Message Carbon forwards),
+   * goes to the watch's handler, and Thunderbird never sees it. The handler
+   * answers IQs itself. The first matching watch wins.
+   */
+  const watches = new Set();
+  function watchStanzas({ iq = [], message = [] } = {}, handler) {
+    const watch = { iq: new Set(iq), message: new Set(message), handler };
+    watches.add(watch);
+    return () => watches.delete(watch);
+  }
+  const elementChildren = (node) => (node?.children ?? []).filter((c) => c.type !== "text");
+  function watchFor(stanza, kind) {
+    if (!watches.size) {
+      return null;
+    }
+    let namespaces;
+    if (kind === "iq") {
+      if (!["get", "set"].includes(stanza.attributes.type)) {
+        return null;
+      }
+      namespaces = elementChildren(stanza).map((c) => c.uri);
+    } else {
+      const carbon = elementChildren(stanza).find((c) => c.uri === NS_CARBONS && (c.localName === "sent" || c.localName === "received"));
+      const inner = carbon ? carbon.getElement(["forwarded", "message"]) : null;
+      namespaces = [...elementChildren(stanza), ...elementChildren(inner)].map((c) => c.uri);
+    }
+    for (const watch of watches) {
+      if (namespaces.some((ns) => watch[kind].has(ns))) {
+        return watch;
+      }
+    }
+    return null;
+  }
+  /** Hands a watched stanza to its handler; true when one took it. */
+  function deliverWatched(account, stanza, kind) {
+    const watch = watchFor(stanza, kind);
+    if (!watch) {
+      return false;
+    }
+    try {
+      watch.handler(account, stanza, kind);
+    } catch (e) {
+      log(`ERROR: a ${kind} watch handler failed: ${e?.message ?? e}`);
+    }
+    return true;
+  }
 
   /** @type {Map<object, ReturnType<typeof createOmemoAccount>>} */
   const accounts = new Map();
@@ -746,6 +828,9 @@ export function installBridge(tb) {
   };
 
   acct.onIQStanza = function (aStanza, ...rest) {
+    if (safely("checking the stanza watches", () => deliverWatched(this, aStanza, "iq"))) {
+      return undefined;
+    }
     const handled = safely("answering disco#info for our caps", () => {
       const query = aStanza.getElement(["query"]);
       if (aStanza.attributes.type !== "get" || query?.uri !== NS_DISCO_INFO) {
@@ -770,6 +855,9 @@ export function installBridge(tb) {
   };
 
   acct.onMessageStanza = function (aStanza, ...rest) {
+    if (safely("checking the stanza watches", () => deliverWatched(this, aStanza, "message"))) {
+      return undefined;
+    }
     const swallowed = safely("reading an OMEMO device list push", () => {
       const event = aStanza.getElement(["event"]);
       if (event?.uri !== NS_PUBSUB_EVENT) {
@@ -1113,7 +1201,11 @@ export function installBridge(tb) {
     updateSettings,
     ownDevices,
     saveAll,
+    addFeatures,
+    watchStanzas,
+    bareJidOf,
     async uninstall() {
+      watches.clear();
       for (const [proto, name] of targets) {
         proto[name] = originals.get(name);
       }

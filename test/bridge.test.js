@@ -155,6 +155,55 @@ test("disco#info for our caps node is answered with the node; other iqs go to Th
   assert.equal(tb.calls.filter((c) => c[0] === "onIQStanza").length, 2, "everything else reaches Thunderbird");
 });
 
+test("watchStanzas: IQs and messages (carbons included) in watched namespaces go to the handler, not Thunderbird", () => {
+  const { tb, bridge, lines } = setup();
+  const account = tb.makeAccount("alice@example.org");
+  const seen = [];
+  const unwatch = bridge.watchStanzas({ iq: ["urn:xmpp:jingle:1"], message: ["urn:xmpp:jingle-message:0"] },
+    (acc, stanza, kind) => seen.push([acc === account, kind, stanza.attributes.id]));
+  const onIq = () => tb.calls.filter((c) => c[0] === "onIQStanza").length;
+  const onMessage = () => tb.calls.filter((c) => c[0] === "onMessageStanza").length;
+
+  account.onIQStanza(parseToXmlNode(`<iq xmlns="jabber:client" type="set" id="j1" from="bob@example.org/phone"><jingle xmlns="urn:xmpp:jingle:1" action="session-initiate" sid="s1"/></iq>`));
+  account.onIQStanza(parseToXmlNode(`<iq xmlns="jabber:client" type="result" id="j2" from="bob@example.org/phone"><jingle xmlns="urn:xmpp:jingle:1"/></iq>`));
+  account.onIQStanza(parseToXmlNode(`<iq xmlns="jabber:client" type="get" id="p1"><ping xmlns="urn:xmpp:ping"/></iq>`));
+  assert.equal(onIq(), 2, "a result and an unwatched get reach Thunderbird");
+
+  account.onMessageStanza(parseToXmlNode(`<message xmlns="jabber:client" id="m1" from="bob@example.org/phone" type="chat"><propose xmlns="urn:xmpp:jingle-message:0" id="c1"/><store xmlns="urn:xmpp:hints"/></message>`));
+  account.onMessageStanza(parseToXmlNode(`<message xmlns="jabber:client" id="m2" from="alice@example.org" type="chat"><sent xmlns="urn:xmpp:carbons:2"><forwarded xmlns="urn:xmpp:forward:0"><message xmlns="jabber:client" from="alice@example.org/phone" to="bob@example.org" type="chat"><proceed xmlns="urn:xmpp:jingle-message:0" id="c2"/></message></forwarded></sent></message>`));
+  account.onMessageStanza(parseToXmlNode(`<message xmlns="jabber:client" id="m3" from="bob@example.org" type="chat"><body>hi</body></message>`));
+  assert.equal(onMessage(), 1, "only the plain chat message reaches Thunderbird");
+  assert.deepEqual(seen, [[true, "iq", "j1"], [true, "message", "m1"], [true, "message", "m2"]]);
+
+  unwatch();
+  account.onIQStanza(parseToXmlNode(`<iq xmlns="jabber:client" type="set" id="j3"><jingle xmlns="urn:xmpp:jingle:1" sid="s1"/></iq>`));
+  assert.equal(onIq(), 3, "after unwatching, Thunderbird gets it again");
+
+  bridge.watchStanzas({ iq: ["urn:xmpp:jingle:1"] }, () => {
+    throw new Error("boom");
+  });
+  account.onIQStanza(parseToXmlNode(`<iq xmlns="jabber:client" type="set" id="j4"><jingle xmlns="urn:xmpp:jingle:1" sid="s1"/></iq>`));
+  assert.equal(onIq(), 3, "a failing handler still keeps the stanza");
+  assert.match(lines.join("\n"), /ERROR: a iq watch handler failed: boom/);
+});
+
+test("addFeatures: listed in disco#info and the caps hash, removed by its remover and by uninstall", async () => {
+  const { tb, bridge } = setup();
+  const before = [...tb.SupportedFeatures];
+  const remove = bridge.addFeatures(["urn:xmpp:jingle:1", "urn:xmpp:jingle:1", tb.SupportedFeatures[0]]);
+  assert.deepEqual(tb.SupportedFeatures, [...before, "urn:xmpp:jingle:1"], "added once; existing ones not repeated");
+  const account = tb.makeAccount("alice@example.org");
+  account.sendStanza(Stanza.presence({}));
+  const ver = capsVer({ identities: [{ category: "client", type: "pc", name: "Thunderbird" }], features: tb.SupportedFeatures });
+  assert.match(account.sent.at(-1), new RegExp(`ver="${ver.replace(/[+/]/g, "\\$&")}"`));
+  remove();
+  assert.deepEqual(tb.SupportedFeatures, before);
+
+  bridge.addFeatures(["urn:xmpp:jingle:apps:rtp:1"]);
+  await bridge.uninstall();
+  assert.ok(!tb.SupportedFeatures.includes("urn:xmpp:jingle:apps:rtp:1"));
+});
+
 test("device list pushes are handled and kept out of the conversation; chat messages pass through", async () => {
   const { tb, lines, bridge } = setup();
   const account = tb.makeAccount("alice@example.org");
