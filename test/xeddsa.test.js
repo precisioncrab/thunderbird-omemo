@@ -13,14 +13,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { randomBytes } from "node:crypto";
-import { ed25519, x25519, edwardsToMontgomeryPub } from "@noble/curves/ed25519";
+import { ed25519, x25519 } from "@noble/curves/ed25519.js";
 import * as xeddsa from "../src/crypto/xeddsa.js";
 
-const p = ed25519.CURVE.p;
+const p = ed25519.Point.CURVE().p;
 const msg = new TextEncoder().encode("signed prekey bytes stand-in");
 
 function newKey() {
-  const k = x25519.utils.randomPrivateKey();
+  const k = x25519.utils.randomSecretKey();
   return { k, u: x25519.getPublicKey(k) };
 }
 
@@ -38,7 +38,7 @@ test("calculateKeyPair's Edwards key maps to the X25519 public key, for raw uncl
     const { k, u } = newKey();
     const { A } = xeddsa.calculateKeyPair(k);
     assert.equal(A[31] & 0x80, 0, "sign bit must be 0");
-    assert.deepEqual(edwardsToMontgomeryPub(A), u);
+    assert.deepEqual(ed25519.utils.toMontgomery(A), u);
   }
 });
 
@@ -54,9 +54,9 @@ test("Montgomery <-> Edwards conversions round-trip and agree with noble", () =>
 test("edwardsToMontgomery accepts Ed25519 keys with either sign bit", () => {
   let seen = 0;
   while (seen !== 0b11) {
-    const A = ed25519.getPublicKey(ed25519.utils.randomPrivateKey());
+    const A = ed25519.getPublicKey(ed25519.utils.randomSecretKey());
     seen |= A[31] & 0x80 ? 0b10 : 0b01;
-    assert.deepEqual(xeddsa.edwardsToMontgomery(A), edwardsToMontgomeryPub(A));
+    assert.deepEqual(xeddsa.edwardsToMontgomery(A), ed25519.utils.toMontgomery(A));
   }
 });
 
@@ -81,7 +81,7 @@ test("XEdDSA signatures are standard Ed25519 signatures under the Edwards key", 
 test("verifyEdwards accepts genuine Ed25519 signatures from keys with either sign bit", () => {
   let seen = 0;
   while (seen !== 0b11) {
-    const seed = ed25519.utils.randomPrivateKey();
+    const seed = ed25519.utils.randomSecretKey();
     const A = ed25519.getPublicKey(seed);
     seen |= A[31] & 0x80 ? 0b10 : 0b01;
     assert.equal(xeddsa.verifyEdwards(A, msg, ed25519.sign(msg, seed)), true);

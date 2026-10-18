@@ -13,7 +13,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { randomBytes } from "@noble/hashes/utils";
+import { randomBytes } from "@noble/hashes/utils.js";
 import * as keys from "../src/crypto/keys.js";
 import * as pb from "../src/crypto/protobuf.js";
 import * as x3dh from "../src/crypto/x3dh.js";

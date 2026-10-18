@@ -20,10 +20,10 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { x25519 } from "@noble/curves/ed25519";
-import { hkdf } from "@noble/hashes/hkdf";
-import { hmac } from "@noble/hashes/hmac";
-import { sha256 } from "@noble/hashes/sha256";
+import { x25519 } from "@noble/curves/ed25519.js";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { hmac } from "@noble/hashes/hmac.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import * as xeddsa from "../src/crypto/xeddsa.js";
 import { load, h, hex } from "./helpers.js";
 
@@ -110,7 +110,7 @@ for (const [ns, v] of Object.entries(conversations)) {
     for (const m of v.messages) {
       for (const t of [...m.encrypt.trace, ...m.decrypt.trace]) {
         if (t.step === "root_kdf") {
-          const out = hkdf(sha256, h(t.dh_out), h(t.root_key), ROOT_INFO[ns], 64);
+          const out = hkdf(sha256, h(t.dh_out), h(t.root_key), new TextEncoder().encode(ROOT_INFO[ns]), 64);
           assert.equal(hex(out), t.new_root_key + t.chain_key);
           steps++;
         } else if (t.step === "chain_kdf") {

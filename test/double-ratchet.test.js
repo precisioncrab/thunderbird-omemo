@@ -20,11 +20,11 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { hkdf } from "@noble/hashes/hkdf";
-import { hmac } from "@noble/hashes/hmac";
-import { sha256 } from "@noble/hashes/sha256";
-import { randomBytes } from "@noble/hashes/utils";
-import { cbc } from "@noble/ciphers/aes";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { hmac } from "@noble/hashes/hmac.js";
+import { sha256 } from "@noble/hashes/sha2.js";
+import { randomBytes } from "@noble/hashes/utils.js";
+import { cbc } from "@noble/ciphers/aes.js";
 import * as dr from "../src/crypto/double-ratchet.js";
 import * as keys from "../src/crypto/keys.js";
 import * as pb from "../src/crypto/protobuf.js";
@@ -65,7 +65,7 @@ function xmlKey(m) {
  * key and associated data, independently of double-ratchet.js.
  */
 function openOldmemo(framed, messageKey, associatedData) {
-  const km = hkdf(sha256, messageKey, new Uint8Array(32), "WhisperMessageKeys", 80);
+  const km = hkdf(sha256, messageKey, new Uint8Array(32), new TextEncoder().encode("WhisperMessageKeys"), 80);
   const body = framed.subarray(0, framed.length - 8);
   const mac = hmac(sha256, km.subarray(32, 64), Uint8Array.from([...associatedData, ...body])).subarray(0, 8);
   assert.equal(hex(framed.subarray(framed.length - 8)), hex(mac), "MAC under the reference's key and AD");

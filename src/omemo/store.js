@@ -20,7 +20,7 @@
  * keys, each namespace with its own id counters (as python-omemo keeps them).
  */
 
-import { x25519 } from "@noble/curves/ed25519";
+import { x25519 } from "@noble/curves/ed25519.js";
 import * as keys from "../crypto/keys.js";
 import * as doubleRatchet from "../crypto/double-ratchet.js";
 import { randomBytes } from "../crypto/random.js";

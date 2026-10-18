@@ -14,7 +14,7 @@
  * disco#info reply has none), checked against the XEP's own example.
  */
 
-import { sha1 } from "@noble/hashes/sha1";
+import { sha1 } from "@noble/hashes/legacy.js";
 
 export const NS_CAPS = "http://jabber.org/protocol/caps";
 

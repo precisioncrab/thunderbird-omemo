@@ -10,7 +10,7 @@
  * secure generator (nsIRandomGenerator) with setRandomSource.
  */
 
-import { randomBytes as webCryptoRandomBytes } from "@noble/hashes/utils";
+import { randomBytes as webCryptoRandomBytes } from "@noble/hashes/utils.js";
 
 let source = null;
 

@@ -14,6 +14,7 @@ import assert from "node:assert/strict";
 import { buildCore } from "../scripts/build.mjs";
 import * as core from "../src/crypto/index.js";
 import * as keys from "../src/crypto/keys.js";
+import { randomBytes } from "../src/crypto/random.js";
 import { hex } from "./helpers.js";
 import { readFileSync } from "node:fs";
 import { CORE_VERSION as sourceVersion } from "../src/core.js";
@@ -25,7 +26,8 @@ test("the bundle is one self-contained module with noble's license notices", () 
   // or require); a text search would trip over JSDoc import() types.
   assert.deepEqual(imports, [], "no imports left");
   for (const lib of ["noble-hashes", "noble-curves", "noble-ciphers"]) {
-    assert.match(code, new RegExp(`${lib} - MIT License`), lib);
+    // The build appends each library's LICENSE file (noble-hashes 2.x has no comment of its own).
+    assert.match(code, new RegExp(`/\\*! ${lib} [0-9.]+ - MIT License\\s+The MIT License \\(MIT\\)\\s+Copyright \\(c\\) [0-9]{4} Paul Miller[^]*?Permission is hereby granted`), lib);
   }
 });
 
@@ -85,12 +87,33 @@ test("without Web Crypto and without a source, randomness fails loudly, and a so
   try {
     assert.equal(core.hasWebCrypto(), false);
     assert.throws(() => keys.generateIdentityKeyPair(), /No source of randomness/);
-    assert.throws(() => core.selfTest(), /self-test failed at "oldmemo session".*crypto\.getRandomValues: undefined/);
+    // noble-curves 2.x blinds Ed25519 secret-key multiplication with the Web
+    // Crypto it found at load, so with Web Crypto taken away afterwards (which
+    // Thunderbird never does) the XEdDSA step fails too. The next test covers
+    // the real case: a scope that never had Web Crypto.
+    assert.throws(() => core.selfTest(), /self-test failed at "(XEdDSA known answer|oldmemo session)".*crypto\.getRandomValues: undefined/);
     core.setRandomSource((n) => Uint8Array.from({ length: n }, (_, i) => (i * 37 + n) & 0xff));
-    assert.equal(hex(keys.generateIdentityKeyPair().privateKey).length, 64);
+    assert.equal(hex(randomBytes(32)), hex(Uint8Array.from({ length: 32 }, (_, i) => (i * 37 + 32) & 0xff)), "the source is used");
   } finally {
     core.setRandomSource(null);
     Object.defineProperty(globalThis, "crypto", original);
   }
   assert.equal(core.hasWebCrypto(), true);
+});
+
+test("a bundle loaded where there's no Web Crypto passes its self-test with a plugged-in source", async () => {
+  // As the Experiment does it: noble sees no Web Crypto at load (so it doesn't
+  // blind), and Thunderbird's own generator is plugged in.
+  const original = Object.getOwnPropertyDescriptor(globalThis, "crypto");
+  Object.defineProperty(globalThis, "crypto", { value: undefined, configurable: true });
+  try {
+    const fresh = await import(`data:text/javascript;base64,${Buffer.from(`${code}
+// fresh copy`).toString("base64")}`);
+    assert.equal(fresh.hasWebCrypto(), false);
+    const { randomBytes: nodeRandomBytes } = await import("node:crypto");
+    fresh.setRandomSource((n) => new Uint8Array(nodeRandomBytes(n)));
+    assert.match(fresh.selfTest(), /^crypto self-test passed.*crypto\.getRandomValues: undefined/);
+  } finally {
+    Object.defineProperty(globalThis, "crypto", original);
+  }
 });

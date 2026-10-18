@@ -6,7 +6,8 @@
  * Bundles src/core.js (the crypto core and OMEMO layer, @noble inlined) into one
  * ES module, dist/omemo-core.mjs, because Gecko can't resolve bare
  * "@noble/..." imports (docs/TASKS.md 3.1). The Experiment loads it with
- * ChromeUtils.importESModule. noble's MIT license comments are kept.
+ * ChromeUtils.importESModule. noble's MIT license texts are appended
+ * (noble-hashes 2.x has no license comment in its files to keep).
  *
  * Run with: npm run build (npm run package runs it too).
  */
@@ -18,6 +19,16 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const CORE_BUNDLE = "dist/omemo-core.mjs";
+
+/** The license text of each bundled noble library, as comments. */
+function nobleLicenses() {
+  return ["hashes", "curves", "ciphers"].map((name) => {
+    const dir = join(root, "node_modules", "@noble", name);
+    const { version } = JSON.parse(readFileSync(join(dir, "package.json"), "utf8"));
+    const text = readFileSync(join(dir, "LICENSE"), "utf8").trim().replaceAll("*/", "* /");
+    return `/*! noble-${name} ${version} - MIT License\n${text}\n*/`;
+  }).join("\n");
+}
 
 /**
  * @param {object} [options]
@@ -37,6 +48,7 @@ export async function buildCore({ write = true } = {}) {
     target: "firefox128",
     outfile: CORE_BUNDLE,
     legalComments: "eof",
+    footer: { js: nobleLicenses() },
     write,
     metafile: true,
     // Stamped so the Experiment can tell a stale cached core from this one.

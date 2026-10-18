@@ -23,7 +23,7 @@
  * own bundle.
  */
 
-import { x25519 } from "@noble/curves/ed25519";
+import { x25519 } from "@noble/curves/ed25519.js";
 import { randomBytes } from "./random.js";
 import * as xeddsa from "./xeddsa.js";
 

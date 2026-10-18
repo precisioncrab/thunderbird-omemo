@@ -29,9 +29,10 @@
  * the first framed ratchet message (double-ratchet.js).
  */
 
-import { x25519 } from "@noble/curves/ed25519";
-import { hkdf } from "@noble/hashes/hkdf";
-import { sha256 } from "@noble/hashes/sha256";
+import { x25519 } from "@noble/curves/ed25519.js";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { utf8ToBytes as utf8 } from "@noble/hashes/utils.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { randomBytes } from "./random.js";
 import * as keys from "./keys.js";
 import * as pb from "./protobuf.js";
@@ -219,7 +220,7 @@ export function decodeKeyExchange(namespace, bytes) {
 
 function deriveSecret(namespace, dhOutputs) {
   const ikm = concatBytes(PREFIX, ...dhOutputs);
-  return hkdf(sha256, ikm, new Uint8Array(32), INFO[namespace], 32);
+  return hkdf(sha256, ikm, new Uint8Array(32), utf8(INFO[namespace]), 32);
 }
 
 function associatedData(namespace, initiatorIdentityKey, responderIdentityKey) {

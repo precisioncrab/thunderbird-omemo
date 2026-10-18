@@ -13,9 +13,9 @@
     "package": "node scripts/package.mjs"
   },
   "dependencies": {
-    "@noble/ciphers": "^0.6.0",
-    "@noble/curves": "^1.4.0",
-    "@noble/hashes": "^1.4.0",
+    "@noble/ciphers": "^2.4.0",
+    "@noble/curves": "^2.4.0",
+    "@noble/hashes": "^2.4.0",
     "qrcode-generator": "^2.0.4"
   },
   "devDependencies": {

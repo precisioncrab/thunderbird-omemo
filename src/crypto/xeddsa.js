@@ -19,14 +19,14 @@
  * twomemo needs because it publishes identity keys in Ed25519 form.
  */
 
-import { ed25519 } from "@noble/curves/ed25519";
-import { sha512 } from "@noble/hashes/sha512";
+import { ed25519 } from "@noble/curves/ed25519.js";
+import { sha512 } from "@noble/hashes/sha2.js";
 
 const Point = ed25519.Point;
 const Fp = Point.Fp;
 const B = Point.BASE;
-const p = ed25519.CURVE.p; // 2^255 - 19
-const q = ed25519.CURVE.n; // prime order of B (the spec's q)
+const p = Point.CURVE().p; // 2^255 - 19
+const q = Point.CURVE().n; // prime order of B (the spec's q)
 const S_LIMIT = 1n << 253n; // 2^|q|: verify rejects s at or above this (section 4.1)
 
 // hash1 prefix (section 2.5): the 32-byte little-endian encoding of
@@ -39,7 +39,7 @@ HASH1_PREFIX[0] = 0xfe;
  * scalar pair XEdDSA signs with (section 2.3, calculate_key_pair).
  *
  * @param {Uint8Array} kBytes - 32-byte X25519 private key. Clamped here, so
- *   raw keys (e.g. from x25519.utils.randomPrivateKey) work as-is.
+ *   raw keys (e.g. from x25519.utils.randomSecretKey) work as-is.
  * @returns {{ A: Uint8Array, a: bigint }} A: 32-byte Edwards public key with
  *   sign bit 0. a: the private scalar matching A (k or -k mod q).
  */

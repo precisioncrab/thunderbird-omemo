@@ -10,7 +10,7 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { x25519 } from "@noble/curves/ed25519";
+import { x25519 } from "@noble/curves/ed25519.js";
 import * as keys from "../src/crypto/keys.js";
 import * as xeddsa from "../src/crypto/xeddsa.js";
 import { load, h, hex, replay } from "./helpers.js";

@@ -31,7 +31,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 | Options page tabs and Instructions (`src/options/`) | **Confirmed** (0.0.15): Settings, Verify on phone and Instructions tabs; `/omemo help` and `/omemo qr` open the page as a Thunderbird tab | |
 | Packaging (milestone 7) | **Done: 0.1.0 released** on GitHub (free, unsigned `.xpi`, sponsor button). Earlier notes: Self-distributed unsigned `.xpi` (ATN rejects Experiment add-ons); whether to charge is undecided. Done: the "What this add-on can access" section (README, Instructions tab) | `docs/PLAN.md` |
 
-**Tests:** `npm test` gives 267 passing. `npm run test:coverage` shows the crypto core fully covered apart from three unreachable length checks.
+**Tests:** `npm test` gives 268 passing. `npm run test:coverage` shows the crypto core fully covered apart from three unreachable length checks.
 
 **Repo:** public GitHub `precisioncrab/thunderbird-omemo`, branch `main`, since the 0.1.0 release (2026-09-26), starting from one fresh commit. The full development history before that is in the private `precisioncrab/thunderbird-omemo-dev` (local branch `dev-history`, remote `archive`). Commits use "Precision Crab" and the GitHub no-reply address. The repo is public: keep personal details (names, personal XMPP addresses) out of it; tests and docs use the test1/test2@test.snikket.chat accounts.
 
@@ -40,7 +40,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 ## Next steps
 
 0. ~~Publish 0.1.1~~ **Released 2026-10-02** (https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.1). The store file rename can only be seen with an account that has `+` or other unusual characters in its JID (the test accounts don't).
-1. **Watch the releases:** GitHub issues from users, and whether other Thunderbird versions (ESR 128/140, newer releases) load it. Keep a tested-versions note in the README.
+1. **Watch the releases:** GitHub issues from users, and whether other Thunderbird versions (ESR 128/140, newer releases) load it. Record each in the README's "Tested Thunderbird versions" table (added 2026-10-17).
 2. **Pro (paid, $10):** milestone 8 calling in a private repo, sold on Gumroad. Decided 2026-10-02: same add-on id, so Pro replaces the free add-on. First: run the calling spike; then the Jingle signaling modules. Generic hooks it needs land in this repo first.
 3. **4.12 interop matrix** with other OMEMO clients (Conversations, Gajim, Dino, Monal), and **OTR/OMEMO coexistence** (the README tells users to turn OTR off until then).
 4. Small: watch for the first signed prekey rotation (due 2026-10-02; the console logs `replaced our signed prekey (a week old)`).
@@ -52,10 +52,14 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 - **OTR and OMEMO in the same conversation:** Thunderbird has built-in OTR, which can start on its own between XMPP contacts. Still open: make sure the two never both encrypt a conversation (prefer OMEMO when the peer has OMEMO devices, and keep OTR out of it), and tell the user which one is active. Testing so far runs with OTR off (`chat.otr.enable`=false), since OTR crashed Thunderbird.
 - **oldmemo's wire format has no reference** (but a real Cheogram client's oldmemo messages now decrypt, 2026-09-25). Every oldmemo implementation is GPL/AGPL. It gets confirmed against real clients (Conversations, Gajim) in 4.12, where we also save real stanzas as test fixtures. One item to check there: we send `pn` the way libsignal does (last index, not length) and accept either reading on receive.
 - **oldmemo key exchanges without a pre key:** libsignal makes `preKeyId` optional, but our protobuf schema requires it. Fine for what we send; relax it if a real client ever omits it (4.12).
-- **noble 2.x migration (2.11):** optional. We use 1.x names that also exist in 2.x where it was cheap.
+- **noble 2.x (2.11, done 2026-10-17, not yet run in Thunderbird):** the next build's console must still say `crypto self-test passed`; if it doesn't, the commit to undo is the noble 2.x one.
 - **The project-root docs are not in git:** `NEXT.md`, `_context.md` and `AGENTS.md` sit outside the repo. Consider moving them in.
 
 ## Log
+
+### 2026-10-17
+- **noble 2.x (task 2.11; not yet run in Thunderbird).** `@noble/curves`, `@noble/hashes` and `@noble/ciphers` moved from 1.x to 2.4.0 (MIT, released 2026-08-27). Import paths gained `.js` (sha256/sha512 now come from `sha2.js`, sha1 from `legacy.js`), HKDF info labels go in as bytes, and `ed25519.CURVE` became `Point.CURVE()`. All 268 tests pass, including every byte-exact reference vector. Two side effects handled: noble-hashes 2.x dropped its license comment, so the build now appends the three noble LICENSE files to `dist/omemo-core.mjs` (MIT asks for the notice in copies); and noble-curves 2.4 blinds Ed25519 secret-key multiplication using the Web Crypto present when it loads. Thunderbird's module scope has Web Crypto (checked 2026-09-25), and a scope without it skips blinding, so the `nsIRandomGenerator` fallback still works; a new bundle test loads the core where there's no Web Crypto and runs the full self-test on a plugged-in source.
+- **README: tested Thunderbird versions.** A table of what has actually been tried (156.0.1 on Windows with 0.1.0 and 0.1.1) and what hasn't (128 ESR, 140 ESR, 157 and later), with a request for issue reports.
 
 ### 2026-10-10
 - **Generic stanza hook (for Pro's calling; not yet run in Thunderbird).** `bridge.js`: `watchStanzas` (IQ gets/sets and messages, carbons included, with a child in chosen namespaces go to a handler instead of Thunderbird) and `addFeatures` (extra disco#info features, in the caps hash, removed on uninstall). The Experiment exposes them as `addFeatures`, `watchStanzas`, the `onStanza` event (stanzas as XML text), `getAccounts`, `sendStanza` and `sendIq`. Two new bridge tests (267 pass); the Experiment's new calls were also driven against the fake Thunderbird in a throwaway harness. No user-visible change: nothing watches or adds features unless code built on this add-on asks.

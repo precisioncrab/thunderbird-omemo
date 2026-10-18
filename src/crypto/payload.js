@@ -26,11 +26,12 @@
  * real clients in task 4.12. Randomness is injectable, as in keys.js.
  */
 
-import { hkdf } from "@noble/hashes/hkdf";
-import { hmac } from "@noble/hashes/hmac";
-import { sha256 } from "@noble/hashes/sha256";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { utf8ToBytes as utf8 } from "@noble/hashes/utils.js";
+import { hmac } from "@noble/hashes/hmac.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { randomBytes } from "./random.js";
-import { cbc, gcm } from "@noble/ciphers/aes";
+import { cbc, gcm } from "@noble/ciphers/aes.js";
 import * as keys from "./keys.js";
 
 const TWOMEMO_INFO = "OMEMO Payload";
@@ -137,7 +138,7 @@ export function emptyKeyMaterial(namespace, { random = randomBytes } = {}) {
 // --- internals ---
 
 function expandTwomemoKey(key) {
-  const out = hkdf(sha256, key, ZERO_SALT, TWOMEMO_INFO, 80);
+  const out = hkdf(sha256, key, ZERO_SALT, utf8(TWOMEMO_INFO), 80);
   return { aesKey: out.slice(0, 32), macKey: out.slice(32, 64), iv: out.slice(64, 80) };
 }
 

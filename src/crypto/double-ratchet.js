@@ -46,12 +46,13 @@
  * save and reload after every step.
  */
 
-import { x25519 } from "@noble/curves/ed25519";
-import { hkdf } from "@noble/hashes/hkdf";
-import { hmac } from "@noble/hashes/hmac";
-import { sha256 } from "@noble/hashes/sha256";
+import { x25519 } from "@noble/curves/ed25519.js";
+import { hkdf } from "@noble/hashes/hkdf.js";
+import { utf8ToBytes as utf8 } from "@noble/hashes/utils.js";
+import { hmac } from "@noble/hashes/hmac.js";
+import { sha256 } from "@noble/hashes/sha2.js";
 import { randomBytes } from "./random.js";
-import { cbc } from "@noble/ciphers/aes";
+import { cbc } from "@noble/ciphers/aes.js";
 import * as keys from "./keys.js";
 import * as pb from "./protobuf.js";
 
@@ -535,7 +536,7 @@ function associatedDataFor(state, profile, direction) {
 }
 
 function kdfRoot(profile, rootKey, dhOutput) {
-  const out = hkdf(sha256, dhOutput, rootKey, profile.rootInfo, 64);
+  const out = hkdf(sha256, dhOutput, rootKey, utf8(profile.rootInfo), 64);
   return { rootKey: out.slice(0, 32), chainKey: out.slice(32, 64) };
 }
 
@@ -547,7 +548,7 @@ function kdfChain(chainKey) {
 }
 
 function expandMessageKey(profile, messageKey) {
-  const out = hkdf(sha256, messageKey, ZERO_SALT, profile.messageKeyInfo, 80);
+  const out = hkdf(sha256, messageKey, ZERO_SALT, utf8(profile.messageKeyInfo), 80);
   return { aesKey: out.slice(0, 32), macKey: out.slice(32, 64), iv: out.slice(64, 80) };
 }
 

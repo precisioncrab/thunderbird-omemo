@@ -13,8 +13,8 @@
 
 import test from "node:test";
 import assert from "node:assert/strict";
-import { randomBytes } from "@noble/hashes/utils";
-import { gcm } from "@noble/ciphers/aes";
+import { randomBytes } from "@noble/hashes/utils.js";
+import { gcm } from "@noble/ciphers/aes.js";
 import * as payload from "../src/crypto/payload.js";
 import { load, h, hex, b64, text, replay } from "./helpers.js";
 
