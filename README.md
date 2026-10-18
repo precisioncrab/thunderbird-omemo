@@ -84,7 +84,7 @@ but only the versions below have actually been tried.
 | Thunderbird | OS | Add-on | Result |
 |---|---|---|---|
 | 156.0.1 | Windows | 0.1.0 to 0.1.1 | Works (encrypted chat with Cheogram both ways, verification) |
-| 158.0 | Windows | 0.1.1 | Loads, connects, publishes and rotates its keys; an encrypted chat not yet confirmed on this version |
+| 158.0 | Windows | 0.1.1 | Works (loads, rotates its keys; encrypted chat with Cheogram both ways, seen with a later build of the same OMEMO code) |
 | 128 ESR, 140 ESR | | | Not tested yet |
 | 157, 159 and later | | | Not tested yet |
 
