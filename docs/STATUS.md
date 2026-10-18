@@ -58,6 +58,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 ## Log
 
 ### 2026-10-18
+- **Name: OMEMO for Thunderbird** (the maintainer; was "OMEMO for Thunderbird Chat", README title "Thunderbird OMEMO"). The paid version is OMEMO Pro for Thunderbird. Manifest, options page title and README; the repo keeps its name.
 - **Signed prekey rotation confirmed in real use; Thunderbird 158.0 loads 0.1.1.** Read from the maintainer's profile (dates only, no key material): the account in daily use rotated its signed prekey in both namespaces on 2026-10-02, 2026-10-10 and 2026-10-17 (now id 4), and a second account on 2026-10-05 and 2026-10-14; the retired keys are kept as planned. Accounts not connected since late September still have id 1, as expected (rotation runs only while connected). Thunderbird updated itself to 158.0 (build 2026-10-08) with 0.1.1 installed, and the rotations on 10-10 and 10-17 show the add-on loading, connecting and publishing on 158. README table: 158.0 added (an encrypted chat on 158 not yet confirmed).
 
 ### 2026-10-17

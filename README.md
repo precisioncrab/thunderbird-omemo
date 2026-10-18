@@ -1,4 +1,4 @@
-# Thunderbird OMEMO
+# OMEMO for Thunderbird
 
 OMEMO end-to-end encryption for XMPP accounts in Thunderbird Chat.
 
@@ -68,7 +68,7 @@ installed from a file, and Thunderbird has to be told to accept an unsigned add-
    [Releases](https://github.com/precisioncrab/thunderbird-omemo/releases) page.
 4. Open Add-ons and Themes, click the gear icon, choose **Install Add-on From File**, and
    pick the `.xpi`. Restart Thunderbird.
-5. Open the add-on's options (Add-ons and Themes > OMEMO for Thunderbird Chat > Options)
+5. Open the add-on's options (Add-ons and Themes > OMEMO for Thunderbird > Options)
    to choose when chats are encrypted. The **Instructions** tab explains the `/omemo`
    chat commands; `/omemo help` in any chat opens it too.
 
