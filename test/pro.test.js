@@ -23,7 +23,8 @@ function loadPro() {
 
 test("the Pro build is the one with the calls Experiment", () => {
   const pro = loadPro();
-  assert.equal(pro.isPro(JSON.parse(read("manifest.json"))), false);
+  // Runs in both repos, so example manifests rather than this repo's own.
+  assert.equal(pro.isPro({ experiment_apis: { omemoXmpp: {} } }), false);
   assert.equal(pro.isPro({ experiment_apis: { omemoXmpp: {}, omemoCalls: {} } }), true);
   assert.equal(pro.isPro(undefined), false);
 });
