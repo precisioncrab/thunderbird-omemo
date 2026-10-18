@@ -75,6 +75,22 @@ installed from a file, and Thunderbird has to be told to accept an unsigned add-
 To update, install the new `.xpi` over the old one; don't remove the old version first.
 Your keys, verifications and settings stay in your Thunderbird profile either way.
 
+## Tested Thunderbird versions
+
+The add-on hooks Thunderbird's internal chat code, which isn't a stable API, so each
+Thunderbird version needs its own check. The manifest allows Thunderbird 128 and later,
+but only the versions below have actually been tried.
+
+| Thunderbird | OS | Add-on | Result |
+|---|---|---|---|
+| 156.0.1 | Windows | 0.1.0 to 0.1.1 | Works (encrypted chat with Cheogram both ways, verification) |
+| 128 ESR, 140 ESR | | | Not tested yet |
+| 157 and later | | | Not tested yet |
+
+If you run it on another version, please open an
+[issue](https://github.com/precisioncrab/thunderbird-omemo/issues) saying whether it
+loaded and whether encrypted messages went through both ways.
+
 ## Scope (v1)
 
 One-to-one XMPP chats only. Targets both the legacy `eu.siacs.conversations.axolotl`
