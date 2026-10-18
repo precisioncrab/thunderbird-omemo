@@ -38,6 +38,8 @@ let _resourceName = null;
 
 let _core = null;
 let _bridge = null;
+// Names of the commands added with addHintCommand.
+const _hintCommands = new Set();
 
 // The encryption setting from the options page (docs/TASKS.md 4.1); the
 // background script sends it with setSettings, possibly before install().
@@ -306,6 +308,30 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
           safely("adding disco features", () => _bridge?.addFeatures(list));
         },
 
+        async addHintCommand(command) {
+          const { name, help, message } = command ?? {};
+          if (!name || _hintCommands.has(name)) {
+            return;
+          }
+          safely(`registering the /${name} command`, () => {
+            const { IMServices } = ChromeUtils.importESModule(IM_SERVICES_URL);
+            IMServices.cmd.registerCommand({
+              name,
+              get helpString() {
+                return help ?? "";
+              },
+              usageContext: IMServices.cmd.COMMAND_CONTEXT.IM,
+              priority: IMServices.cmd.COMMAND_PRIORITY.PRPL,
+              run(aMsg, aConv) {
+                const wrapped = aConv?.wrappedJSObject ?? aConv;
+                safely(`running /${name}`, () => (wrapped?.target ?? wrapped)?.systemMessage?.(message ?? ""));
+                return true;
+              },
+            }, PRPL_XMPP);
+            _hintCommands.add(name);
+          });
+        },
+
         async watchStanzas(filter) {
           _watchFilter = { iq: [...(filter?.iq ?? [])], message: [...(filter?.message ?? [])] };
           safely("watching stanzas", applyWatch);
@@ -377,6 +403,12 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
   }
 
   onShutdown(isAppShutdown) {
+    for (const name of _hintCommands) {
+      safely(`unregistering the /${name} command`, () => {
+        ChromeUtils.importESModule(IM_SERVICES_URL).IMServices.cmd.unregisterCommand(name, PRPL_XMPP);
+      });
+    }
+    _hintCommands.clear();
     if (_commandRegistered) {
       _commandRegistered = false;
       safely("unregistering the /omemo command", () => {

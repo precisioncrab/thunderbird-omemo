@@ -13,6 +13,9 @@
  * own tab of the page. The page also opens as a Thunderbird tab of its own
  * (/omemo qr, /omemo help). Bundled with qrcode-generator (MIT) by
  * scripts/build.mjs into dist/options.js.
+ *
+ * In the free add-on, a card at the top points to OMEMO Pro for Thunderbird
+ * (src/pro.js, loaded before this script); the Pro build doesn't show it.
  */
 
 import qrcode from "qrcode-generator";
@@ -101,6 +104,28 @@ for (const tab of tabs) {
 window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 showTab(location.hash.slice(1));
 
+/** The Pro card, in the free add-on only. */
+function showPro() {
+  const pro = globalThis.OMEMO_PRO;
+  if (!pro || pro.isPro(browser.runtime.getManifest())) {
+    return;
+  }
+  document.getElementById("pro-name").textContent = pro.name;
+  document.getElementById("pro-text").textContent = `Audio calls with Cheogram, Conversations and other XMPP apps, in a call window in Thunderbird. Installs over this add-on and keeps your keys and verifications. ${pro.onSale ? `${pro.price}, one time.` : "Coming soon."}`;
+  const link = document.getElementById("pro-link");
+  link.textContent = pro.onSale ? "Get Pro" : "Learn more";
+  link.href = pro.url;
+  // Opens in the web browser, not in Thunderbird.
+  link.addEventListener("click", (event) => {
+    if (browser.windows?.openDefaultBrowser) {
+      event.preventDefault();
+      browser.windows.openDefaultBrowser(pro.url);
+    }
+  });
+  document.getElementById("pro").hidden = false;
+}
+
+showPro();
 load();
 showDevices().catch((e) => {
   document.getElementById("devices").textContent = `Couldn't list the devices: ${e?.message ?? e}`;

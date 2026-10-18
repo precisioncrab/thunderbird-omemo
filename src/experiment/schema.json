@@ -60,6 +60,23 @@
         ]
       },
       {
+        "name": "addHintCommand",
+        "type": "function",
+        "description": "Adds a command to XMPP one-to-one chats that only shows a message in the chat (the free add-on's /call, pointing to the Pro version). Removed when the add-on shuts down.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "command",
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "help": { "type": "string" },
+              "message": { "type": "string" }
+            }
+          }
+        ]
+      },
+      {
         "name": "watchStanzas",
         "type": "function",
         "description": "Generic hook: IQ gets/sets with a child in one of the iq namespaces, and messages with a child (or a carbon-forwarded message with a child) in one of the message namespaces, go to onStanza instead of Thunderbird. Replaces any earlier watch. The add-on answers watched IQs itself with sendStanza.",

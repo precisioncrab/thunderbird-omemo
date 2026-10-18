@@ -147,6 +147,16 @@ This add-on is free, and the hope is that Thunderbird adopts OMEMO natively (the
 MPL-2.0, Thunderbird's own license, for exactly that reason). If it's useful to you,
 please consider [sponsoring its development](https://github.com/sponsors/precisioncrab).
 
+## OMEMO Pro for Thunderbird
+
+A paid version, OMEMO Pro for Thunderbird ($10, one time), adds audio calls with
+Cheogram, Conversations and other XMPP apps that support Jingle calls, in a call window
+in Thunderbird, with a choice of microphone and speaker. It's this add-on plus calling:
+it installs over this one and keeps your keys, verifications and settings.
+
+**Coming soon.** This section will link to it once it's on sale. Everything on this page
+stays free and open source.
+
 ## License
 
 MPL-2.0. See `LICENSE`. Dependencies are MIT-licensed (`@noble/curves`,

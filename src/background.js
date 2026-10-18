@@ -41,4 +41,13 @@ browser.storage.onChanged.addListener((changes, area) => {
   await browser.omemoXmpp.setSettings({ ...DEFAULT_SETTINGS, ...settings });
   await browser.omemoXmpp.install();
   console.log("[omemo] install() finished; OMEMO starts on each XMPP account as it connects.");
+  // The free add-on's /call says where calls are (src/pro.js). The Pro
+  // build has a real /call.
+  if (!OMEMO_PRO.isPro(browser.runtime.getManifest())) {
+    await browser.omemoXmpp.addHintCommand({
+      name: "call",
+      help: `call: audio calls, part of ${OMEMO_PRO.name}.`,
+      message: OMEMO_PRO.callHint(),
+    });
+  }
 })();

@@ -125,6 +125,30 @@
     [role="tabpanel"] h2:first-child {
       margin-top: 0;
     }
+    .pro {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 4px 16px;
+      align-items: center;
+      padding: 10px 12px;
+      border: 1px solid color-mix(in srgb, AccentColor 45%, transparent);
+      border-radius: 6px;
+      background: color-mix(in srgb, AccentColor 8%, transparent);
+      margin-bottom: 16px;
+    }
+    .pro[hidden] {
+      display: none;
+    }
+    .pro a {
+      grid-row: span 2;
+      white-space: nowrap;
+      padding: 6px 12px;
+      border-radius: 6px;
+      background: AccentColor;
+      color: AccentColorText;
+      text-decoration: none;
+      font-weight: 600;
+    }
     #saved {
       min-height: 1.4em;
       margin-top: 8px;
@@ -134,6 +158,11 @@
 </head>
 <body>
   <h1>OMEMO encryption for XMPP chats</h1>
+  <aside class="pro" id="pro" hidden>
+    <span class="name" id="pro-name"></span>
+    <a id="pro-link" href="#" target="_blank" rel="noopener"></a>
+    <span class="detail" id="pro-text"></span>
+  </aside>
   <div role="tablist">
     <button type="button" role="tab" id="tab-settings" aria-controls="settings">Settings</button>
     <button type="button" role="tab" id="tab-verify" aria-controls="verify">Verify on phone</button>
@@ -190,6 +219,10 @@
       <td>Makes this chat follow the setting above again.</td>
     </tr>
     <tr>
+      <th><code>/call</code></th>
+      <td>Starts an audio call with this contact. Part of OMEMO Pro for Thunderbird.</td>
+    </tr>
+    <tr>
       <th><code>/omemo help</code></th>
       <td>Opens these instructions in their own tab.</td>
     </tr>
@@ -234,6 +267,7 @@
   </ul>
   <p class="detail">It makes no other network connections: no tracking, no update checks, no license server. The source code is public, so anyone can check this.</p>
   </section>
+  <script src="../pro.js"></script>
   <script src="../../dist/options.js"></script>
 </body>
 </html>
