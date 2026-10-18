@@ -43,7 +43,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 1. **Watch the releases:** GitHub issues from users, and whether other Thunderbird versions (ESR 128/140, newer releases) load it. Record each in the README's "Tested Thunderbird versions" table (added 2026-10-17).
 2. **Pro (paid, $10):** milestone 8 calling in a private repo, sold on Gumroad. Decided 2026-10-02: same add-on id, so Pro replaces the free add-on. First: run the calling spike; then the Jingle signaling modules. Generic hooks it needs land in this repo first.
 3. **4.12 interop matrix** with other OMEMO clients (Conversations, Gajim, Dino, Monal), and **OTR/OMEMO coexistence** (the README tells users to turn OTR off until then).
-4. Small: watch for the first signed prekey rotation (due 2026-10-02; the console logs `replaced our signed prekey (a week old)`).
+4. ~~Watch for the first signed prekey rotation.~~ **Confirmed 2026-10-18** from the key store (see the log).
 
 ## Open risks and decisions
 
@@ -56,6 +56,9 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 - **The project-root docs are not in git:** `NEXT.md`, `_context.md` and `AGENTS.md` sit outside the repo. Consider moving them in.
 
 ## Log
+
+### 2026-10-18
+- **Signed prekey rotation confirmed in real use; Thunderbird 158.0 loads 0.1.1.** Read from the maintainer's profile (dates only, no key material): the account in daily use rotated its signed prekey in both namespaces on 2026-10-02, 2026-10-10 and 2026-10-17 (now id 4), and a second account on 2026-10-05 and 2026-10-14; the retired keys are kept as planned. Accounts not connected since late September still have id 1, as expected (rotation runs only while connected). Thunderbird updated itself to 158.0 (build 2026-10-08) with 0.1.1 installed, and the rotations on 10-10 and 10-17 show the add-on loading, connecting and publishing on 158. README table: 158.0 added (an encrypted chat on 158 not yet confirmed).
 
 ### 2026-10-17
 - **noble 2.x (task 2.11; not yet run in Thunderbird).** `@noble/curves`, `@noble/hashes` and `@noble/ciphers` moved from 1.x to 2.4.0 (MIT, released 2026-08-27). Import paths gained `.js` (sha256/sha512 now come from `sha2.js`, sha1 from `legacy.js`), HKDF info labels go in as bytes, and `ed25519.CURVE` became `Point.CURVE()`. All 268 tests pass, including every byte-exact reference vector. Two side effects handled: noble-hashes 2.x dropped its license comment, so the build now appends the three noble LICENSE files to `dist/omemo-core.mjs` (MIT asks for the notice in copies); and noble-curves 2.4 blinds Ed25519 secret-key multiplication using the Web Crypto present when it loads. Thunderbird's module scope has Web Crypto (checked 2026-09-25), and a scope without it skips blinding, so the `nsIRandomGenerator` fallback still works; a new bundle test loads the core where there's no Web Crypto and runs the full self-test on a plugged-in source.
