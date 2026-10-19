@@ -323,8 +323,18 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
               usageContext: IMServices.cmd.COMMAND_CONTEXT.IM,
               priority: IMServices.cmd.COMMAND_PRIORITY.PRPL,
               run(aMsg, aConv) {
+                // The way /omemo answers: a system message written on the
+                // XMPP conversation (only the UI conversation has
+                // systemMessage(), and commands may get either).
                 const wrapped = aConv?.wrappedJSObject ?? aConv;
-                safely(`running /${name}`, () => (wrapped?.target ?? wrapped)?.systemMessage?.(message ?? ""));
+                const conv = wrapped?.target ?? wrapped;
+                safely(`running /${name}`, () => {
+                  if (typeof conv?.writeMessage === "function") {
+                    conv.writeMessage(conv.name, message ?? "", { system: true, noLog: true });
+                  } else {
+                    wrapped?.systemMessage?.(message ?? "");
+                  }
+                });
                 return true;
               },
             }, PRPL_XMPP);
