@@ -104,6 +104,160 @@ for (const tab of tabs) {
 window.addEventListener("hashchange", () => showTab(location.hash.slice(1)));
 showTab(location.hash.slice(1));
 
+/**
+ * The Chat contacts tab: names for chat contacts from the address book. The
+ * background script does the work (it reads the address books and keeps
+ * track of the names written); this page shows its preview and saves each
+ * account's choice in storage as chatNames.accounts.
+ */
+const NAME_MODES = [
+  ["off", "Off"],
+  ["local", "In Thunderbird only"],
+  ["server", "In Thunderbird and on the server"],
+];
+
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+
+/** One line about an account's contacts, from the run's statuses. */
+function namesSummary(account) {
+  const count = (test) => account.contacts.filter(test).length;
+  const parts = [];
+  const pending = count((c) => (c.status === "set" || c.status === "update") && !c.done);
+  const done = count((c) => c.done);
+  if (done) {
+    parts.push(`${plural(done, "contact just got its name", "contacts just got their names")}.`);
+  }
+  if (pending) {
+    parts.push(account.mode === "off"
+      ? `${plural(pending, "contact would get a name", "contacts would get names")}.`
+      : `${plural(pending, "contact still needs its name", "contacts still need their names")}.`);
+  }
+  const named = count((c) => c.status === "named");
+  if (named) {
+    parts.push(`${plural(named, "already has", "already have")} the name from the address book.`);
+  }
+  const kept = count((c) => c.status === "kept");
+  if (kept) {
+    parts.push(`${plural(kept, "already has another name, which is", "already have other names, which are")} kept.`);
+  }
+  const ambiguous = count((c) => c.status === "ambiguous");
+  if (ambiguous) {
+    parts.push(`${plural(ambiguous, "is", "are")} on cards with different names.`);
+  }
+  const unmatched = count((c) => c.status === "unmatched");
+  if (unmatched) {
+    parts.push(`${plural(unmatched, "isn't", "aren't")} in the address book.`);
+  }
+  const noRoster = count((c) => c.status === "no-roster");
+  if (noRoster) {
+    parts.push(`${plural(noRoster, "isn't", "aren't")} on the server's contact list, so can't get a name there.`);
+  }
+  const failed = count((c) => c.status === "error");
+  if (failed) {
+    parts.push(`${failed} couldn't be named (see the add-on's console).`);
+  }
+  return parts.join(" ") || "No chat contacts on this account.";
+}
+
+/** What the list shows for one contact. */
+function namesRow(contact, mode) {
+  switch (contact.status) {
+    case "set":
+      return contact.done ? `Named ${contact.name}` : `${mode === "off" ? "Would get" : "Gets"} ${contact.name}`;
+    case "update":
+      return `${contact.done ? "Renamed" : "Would be renamed"} ${contact.name} (was ${contact.current}, from an older card)`;
+    case "named":
+      return contact.name;
+    case "kept":
+      return `Keeps ${contact.current}`;
+    case "ambiguous":
+      return `Cards with different names: ${contact.names.join(", ")}`;
+    case "no-roster":
+      return "Not on the server's contact list, so it can't get a name there";
+    case "error":
+      return `Couldn't be named: ${contact.error}`;
+    default:
+      return "Not in the address book";
+  }
+}
+
+function renderChatNames(result) {
+  const container = document.getElementById("chat-names");
+  container.replaceChildren();
+  const say = (text) => {
+    const p = document.createElement("p");
+    p.className = "detail";
+    p.textContent = text;
+    container.append(p);
+  };
+  if (!result) {
+    say("Couldn't read the chat contacts; see the add-on's console.");
+    return;
+  }
+  if (!result.accounts.length) {
+    say("No XMPP account is connected yet. Connect one, then reopen this page.");
+    return;
+  }
+  if (!result.cards) {
+    say("No address book card with a name was found. Cards need a name and a phone number, chat address or email address.");
+  }
+  for (const account of result.accounts) {
+    const box = document.createElement("div");
+    box.className = "account";
+    const name = document.createElement("div");
+    name.className = "name";
+    name.textContent = account.jid;
+
+    const label = document.createElement("label");
+    label.textContent = "Names:";
+    const select = document.createElement("select");
+    for (const [value, text] of NAME_MODES) {
+      select.append(new Option(text, value, false, value === account.mode));
+    }
+    select.addEventListener("change", () => saveNameMode(account.jid, select.value));
+    label.append(select);
+
+    const summary = document.createElement("p");
+    summary.className = "detail";
+    summary.textContent = namesSummary(account);
+    box.append(name, label, summary);
+
+    if (account.contacts.length) {
+      const details = document.createElement("details");
+      const title = document.createElement("summary");
+      title.textContent = `All ${plural(account.contacts.length, "chat contact", "chat contacts")}`;
+      const table = document.createElement("table");
+      table.className = "commands";
+      const order = ["set", "update", "error", "ambiguous", "named", "kept", "no-roster", "unmatched"];
+      const sorted = [...account.contacts].sort((a, b) => order.indexOf(a.status) - order.indexOf(b.status) || a.jid.localeCompare(b.jid));
+      for (const contact of sorted) {
+        const row = table.insertRow();
+        const address = document.createElement("th");
+        address.textContent = contact.jid;
+        row.append(address);
+        row.insertCell().textContent = namesRow(contact, account.mode);
+      }
+      details.append(title, table);
+      box.append(details);
+    }
+    container.append(box);
+  }
+}
+
+async function showChatNames(command = "chatNames.preview") {
+  try {
+    renderChatNames(await browser.runtime.sendMessage({ command }));
+  } catch (e) {
+    document.getElementById("chat-names").textContent = `Couldn't read the chat contacts: ${e?.message ?? e}`;
+  }
+}
+
+async function saveNameMode(jid, mode) {
+  const { chatNames } = await browser.storage.local.get("chatNames");
+  await browser.storage.local.set({ chatNames: { ...chatNames, accounts: { ...chatNames?.accounts, [jid]: mode } } });
+  await showChatNames("chatNames.apply");
+}
+
 /** The Pro card, in the free add-on only. */
 function showPro() {
   const pro = globalThis.OMEMO_PRO;
@@ -130,3 +284,4 @@ load();
 showDevices().catch((e) => {
   document.getElementById("devices").textContent = `Couldn't list the devices: ${e?.message ?? e}`;
 });
+showChatNames();

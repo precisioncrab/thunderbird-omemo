@@ -59,6 +59,37 @@ const _incomingSinks = new Set();
 const _diagnosticSinks = new Set();
 const _pageSinks = new Set();
 const _stanzaSinks = new Set();
+const _connectedSinks = new Set();
+
+// onAccountConnected: Thunderbird's "account-connected" notification, sent
+// once an account's roster has arrived (jsProtoHelper's reportConnected),
+// for XMPP accounts. Observed only while the background listens.
+const _connectedObserver = {
+  observe(subject) {
+    safely("reporting a connected account", () => {
+      if (subject?.protocol?.id !== PRPL_XMPP) {
+        return;
+      }
+      const account = subject.prplAccount?.wrappedJSObject ?? subject.prplAccount;
+      fireAll(_connectedSinks, _bridge?.bareJidOf(account) ?? String(subject.normalizedName ?? ""));
+    });
+  },
+};
+let _observingConnects = false;
+
+function observeConnects(on) {
+  if (on === _observingConnects) {
+    return;
+  }
+  _observingConnects = on;
+  safely("watching for connected accounts", () => {
+    if (on) {
+      Services.obs.addObserver(_connectedObserver, "account-connected");
+    } else {
+      Services.obs.removeObserver(_connectedObserver, "account-connected");
+    }
+  });
+}
 
 // The generic stanza hook (watchStanzas, sendStanza, sendIq, addFeatures):
 // for code built on this add-on, such as calling. Kept here so they apply
@@ -357,6 +388,21 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
           }))) ?? [];
         },
 
+        async chatNames(request) {
+          if (!_bridge) {
+            throw new Error("OMEMO isn't installed yet.");
+          }
+          return safely("naming chat contacts", () => _core.contacts.chatNames({
+            accounts: connectedXmppAccounts(_xmppBase),
+            jidOf: (a) => _bridge.bareJidOf(a),
+            cards: request?.cards ?? [],
+            modes: request?.modes ?? {},
+            written: request?.written ?? {},
+            apply: Boolean(request?.apply),
+            log: diag,
+          })) ?? null;
+        },
+
         async sendStanza(jid, xml) {
           const { account, stanza } = accountAndStanza(jid, xml);
           account.sendStanza(stanza);
@@ -408,11 +454,25 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
         onIncomingEncrypted: event("onIncomingEncrypted", _incomingSinks),
         onShowPage: event("onShowPage", _pageSinks),
         onStanza: event("onStanza", _stanzaSinks),
+        onAccountConnected: new EventManager({
+          context,
+          name: "omemoXmpp.onAccountConnected",
+          register(fire) {
+            _connectedSinks.add(fire);
+            observeConnects(true);
+            return () => {
+              _connectedSinks.delete(fire);
+              observeConnects(_connectedSinks.size > 0);
+            };
+          },
+        }).api(),
       },
     };
   }
 
   onShutdown(isAppShutdown) {
+    _connectedSinks.clear();
+    observeConnects(false);
     for (const name of _hintCommands) {
       safely(`unregistering the /${name} command`, () => {
         ChromeUtils.importESModule(IM_SERVICES_URL).IMServices.cmd.unregisterCommand(name, PRPL_XMPP);

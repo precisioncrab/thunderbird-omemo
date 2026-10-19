@@ -7,7 +7,8 @@
  * dist/omemo-core.mjs: the crypto core, plus the OMEMO layer on top of it
  * (key store and persistence, XML and OMEMO's formats, the message layer,
  * PEP, caps, the account lifecycle, and the bridge that hooks it all into
- * Thunderbird; docs/TASKS.md milestones 3 and 4).
+ * Thunderbird; docs/TASKS.md milestones 3 and 4), and names for chat
+ * contacts from the address book (src/contacts/).
  */
 
 export * from "./crypto/index.js";
@@ -31,3 +32,4 @@ export * as account from "./omemo/account.js";
 export * as xmlnode from "./omemo/xmlnode.js";
 export * as bridge from "./omemo/bridge.js";
 export * as fingerprint from "./omemo/fingerprint.js";
+export * as contacts from "./contacts/chat-names.js";

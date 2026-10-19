@@ -45,6 +45,12 @@ Cheogram chats in both directions. What's in place:
   the Signal X3DH spec suggests, while the identity key and fingerprints never change;
   devices silent for 90 days are left out when encrypting; and `/omemo remove` takes
   your own old installs off your device list.
+- Names for chat contacts from your address book (in test builds, not in a release yet):
+  contacts that show only an address, such as SMS numbers through Cheogram, get the name
+  on their address book card, matched by phone number in any format, or by chat or
+  email address. Per account, on the options page's Chat contacts tab: off (the default),
+  in Thunderbird only, or also on your server so your other chat apps show the names.
+  Names a contact already has are never replaced.
 
 Not done yet: group chats. The crypto core matches reference implementations byte for
 byte where references exist.
@@ -109,8 +115,11 @@ uses:
 - Thunderbird's XMPP chat code, to encrypt outgoing and decrypt incoming messages.
 - Its own key files, `<Thunderbird profile>/omemo/<account JID>.json`. No other files.
 - Your XMPP accounts' existing connections, to publish and fetch OMEMO keys on your own
-  servers.
-- The encryption setting, in the add-on's own WebExtension storage.
+  servers, and to save contact names there if you choose that on the Chat contacts tab.
+- Your address books, read only, to find names for chat contacts (the Chat contacts
+  tab). Names are written only where you choose there: Thunderbird's contact list, or
+  also your account's contact list on your XMPP server.
+- The settings, in the add-on's own WebExtension storage.
 
 It makes no other network connections: no telemetry, no update checks, no license
 server.

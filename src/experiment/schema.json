@@ -100,6 +100,34 @@
         "parameters": []
       },
       {
+        "name": "chatNames",
+        "type": "function",
+        "description": "Names for chat contacts from the address book (src/contacts/): matches each connected XMPP account's chat contacts against the cards (vCard texts) and, with apply, writes the names where each account's mode says (off; local, Thunderbird only; server, also the roster). Returns { cards, accounts: [{ jid, mode, contacts }], written }, or null when it failed (see the [omemo] ERROR line).",
+        "async": true,
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "properties": {
+              "cards": { "type": "array", "items": { "type": "string" } },
+              "modes": { "type": "object", "optional": true, "additionalProperties": { "type": "string", "enum": ["off", "local", "server"] } },
+              "written": {
+                "type": "object",
+                "optional": true,
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "name": { "type": "string" },
+                    "where": { "type": "string" }
+                  }
+                }
+              },
+              "apply": { "type": "boolean", "optional": true }
+            }
+          }
+        ]
+      },
+      {
         "name": "sendStanza",
         "type": "function",
         "description": "Generic hook: sends a stanza, given as XML text, from the connected account with this bare JID.",
@@ -196,6 +224,17 @@
             "name": "section",
             "type": "string",
             "enum": ["verify", "instructions"]
+          }
+        ]
+      },
+      {
+        "name": "onAccountConnected",
+        "type": "function",
+        "description": "An XMPP account finished connecting (its roster has arrived), with its bare JID.",
+        "parameters": [
+          {
+            "name": "account",
+            "type": "string"
           }
         ]
       }

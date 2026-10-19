@@ -149,6 +149,25 @@
       text-decoration: none;
       font-weight: 600;
     }
+    .account {
+      padding: 10px;
+      border: 1px solid color-mix(in srgb, currentColor 20%, transparent);
+      border-radius: 6px;
+      margin-bottom: 10px;
+    }
+    .account select {
+      font: inherit;
+      margin-left: 6px;
+    }
+    .account p {
+      margin: 8px 0 0;
+    }
+    .account details {
+      margin-top: 8px;
+    }
+    .account summary {
+      cursor: pointer;
+    }
     #saved {
       min-height: 1.4em;
       margin-top: 8px;
@@ -166,6 +185,7 @@
   <div role="tablist">
     <button type="button" role="tab" id="tab-settings" aria-controls="settings">Settings</button>
     <button type="button" role="tab" id="tab-verify" aria-controls="verify">Verify on phone</button>
+    <button type="button" role="tab" id="tab-contacts" aria-controls="contacts">Chat contacts</button>
     <button type="button" role="tab" id="tab-instructions" aria-controls="instructions">Instructions</button>
   </div>
 
@@ -196,6 +216,14 @@
   <h2>Verify Thunderbird on your phone</h2>
   <p class="detail">In Cheogram, Conversations or Snikket, scan this code from the chat with this account (or its contact details). The app then marks this Thunderbird as verified. You can also compare the fingerprint by eye.</p>
   <div id="devices"><p class="detail">Loading...</p></div>
+  </section>
+
+  <section role="tabpanel" id="contacts" aria-labelledby="tab-contacts" hidden>
+  <h2>Names from your address book</h2>
+  <p class="detail">Chat contacts that show only an address can get their name from your address book. Phone number contacts (SMS through Cheogram, Quicksy) are matched by phone number, in any format; others by the chat address or email address on the card. A name a contact already has is never replaced, and a number that's on cards with different names gets no name.</p>
+  <p class="detail">For each account, choose where the names go. <b>In Thunderbird only</b> names the contacts in Thunderbird's contact list and nowhere else. <b>In Thunderbird and on the server</b> also saves each name in the account's contact list on your XMPP server, so your other chat apps on that account (Conversations, Cheogram) show it too.</p>
+  <div id="chat-names"><p class="detail">Loading...</p></div>
+  <p class="note">Only connected accounts are listed. Once an account is switched on, its names follow your address book: new and changed cards are picked up, also when the account connects. A name you change yourself is left alone.</p>
   </section>
 
   <section role="tabpanel" id="instructions" aria-labelledby="tab-instructions" hidden>
@@ -262,8 +290,9 @@
   <ul class="detail">
     <li>Thunderbird's XMPP chat code, to encrypt what you send and decrypt what you receive.</li>
     <li>Its own key files, one per account, in the <code>omemo</code> folder of your Thunderbird profile. No other files.</li>
-    <li>Your XMPP accounts' existing connections, to publish and fetch OMEMO keys on your own servers.</li>
-    <li>The setting on the Settings tab, in the add-on's own storage.</li>
+    <li>Your XMPP accounts' existing connections, to publish and fetch OMEMO keys on your own servers, and to save contact names there if you choose that on the Chat contacts tab.</li>
+    <li>Your address books, read only, to find names for chat contacts (the Chat contacts tab). Names are written only where you choose there: Thunderbird's contact list, or also your account's contact list on your XMPP server.</li>
+    <li>The settings on the Settings and Chat contacts tabs, in the add-on's own storage.</li>
   </ul>
   <p class="detail">It makes no other network connections: no tracking, no update checks, no license server. The source code is public, so anyone can check this.</p>
   </section>
