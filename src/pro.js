@@ -16,7 +16,8 @@
 var OMEMO_PRO = {
   name: "OMEMO Pro for Thunderbird",
   price: "$10",
-  // Until Pro is on sale, its section in the README.
+  // Until Pro is on sale, its section in the README. When the Gumroad
+  // listing exists: its link here, and onSale true.
   url: "https://github.com/precisioncrab/thunderbird-omemo#omemo-pro-for-thunderbird",
   onSale: false,
 
