@@ -136,6 +136,53 @@ browser.runtime.onMessage.addListener((message) => {
   return undefined;
 });
 
+/*
+ * Contacts Cleanup, the free address book add-on on addons.thunderbird.net
+ * (github.com/precisioncrab/contacts-cleanup), runs the same chat contact
+ * names from its Chat contacts tab, since it can't reach Thunderbird's
+ * chat itself. Only that add-on is answered. Protocol 1:
+ *   { command: "hello" }                        -> { name, version, pro, protocol }
+ *   { command: "chatNames.preview" }            -> what the Chat contacts tab shows
+ *   { command: "chatNames.setMode", jid, mode } -> saves an account's choice, writes, the same
+ *   { command: "openOptions", section }         -> opens this options page at a tab
+ */
+const CONTACTS_CLEANUP_ID = "contacts-cleanup@precisioncrab";
+const NAME_MODES = ["off", "local", "server"];
+const OPTIONS_TABS = ["settings", "verify", "contacts", "instructions"];
+
+async function saveNameMode(jid, mode) {
+  const { chatNames } = await browser.storage.local.get("chatNames");
+  await browser.storage.local.set({ chatNames: { ...chatNames, accounts: { ...chatNames?.accounts, [jid]: mode } } });
+  return (await runChatNames(true)) ?? runChatNames(false);
+}
+
+browser.runtime.onMessageExternal.addListener((message, sender) => {
+  if (sender?.id !== CONTACTS_CLEANUP_ID) {
+    return undefined;
+  }
+  switch (message?.command) {
+    case "hello": {
+      const manifest = browser.runtime.getManifest();
+      return Promise.resolve({ name: manifest.name, version: manifest.version, pro: OMEMO_PRO.isPro(manifest), protocol: 1 });
+    }
+    case "chatNames.preview":
+      return runChatNames(false);
+    case "chatNames.setMode":
+      if (typeof message.jid !== "string" || !/^[^@\s/]+@[^@\s/]+$/.test(message.jid) || !NAME_MODES.includes(message.mode)) {
+        return Promise.reject(new Error("chatNames.setMode needs an account address and a mode (off, local or server)."));
+      }
+      return saveNameMode(message.jid, message.mode);
+    case "openOptions": {
+      const section = OPTIONS_TABS.includes(message.section) ? message.section : "settings";
+      return browser.tabs.create({ url: browser.runtime.getURL(`src/options/options.html#${section}`) })
+        .catch(() => browser.runtime.openOptionsPage())
+        .then(() => true);
+    }
+    default:
+      return undefined;
+  }
+});
+
 (async () => {
   const { settings } = await browser.storage.local.get("settings");
   await browser.omemoXmpp.setSettings({ ...DEFAULT_SETTINGS, ...settings });

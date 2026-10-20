@@ -32,7 +32,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 | Chat contact names from the address book (`src/contacts/`, Chat contacts tab) | **Built and passed 2026-10-19 (test build 0.1.4, Thunderbird 158).** Per account: off (default), Thunderbird only, or also the server; never replaces a name a contact has; reruns when cards change and accounts connect | Project `NEXT.md` 2b, 2c |
 | Packaging (milestone 7) | **Done: 0.1.0 released** on GitHub (free, unsigned `.xpi`, sponsor button). Earlier notes: Self-distributed unsigned `.xpi` (ATN rejects Experiment add-ons); whether to charge is undecided. Done: the "What this add-on can access" section (README, Instructions tab) | `docs/PLAN.md` |
 
-**Tests:** `npm test` gives 292 passing. `npm run test:coverage` shows the crypto core fully covered apart from three unreachable length checks.
+**Tests:** `npm test` gives 298 passing. `npm run test:coverage` shows the crypto core fully covered apart from three unreachable length checks.
 
 **Repo:** public GitHub `precisioncrab/thunderbird-omemo`, branch `main`, since the 0.1.0 release (2026-09-26), starting from one fresh commit. The full development history before that is in the private `precisioncrab/thunderbird-omemo-dev` (local branch `dev-history`, remote `archive`). Commits use "Precision Crab" and the GitHub no-reply address. The repo is public: keep personal details (names, personal XMPP addresses) out of it; tests and docs use the test1/test2@test.snikket.chat accounts.
 
@@ -58,6 +58,9 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 - **The project-root docs are not in git:** `NEXT.md`, `_context.md` and `AGENTS.md` sit outside the repo. Consider moving them in.
 
 ## Log
+
+### 2026-10-20
+- **Contacts Cleanup can run the chat contact names (not yet in a build).** The background answers the Contacts Cleanup add-on (`contacts-cleanup@precisioncrab`, the free address book add-on for addons.thunderbird.net) over `runtime.onMessageExternal`, and no other add-on: `hello` (name, version, Pro or not, protocol 1), `chatNames.preview`, `chatNames.setMode { jid, mode }` (saves the account's choice the way the options page does, then writes; refuses anything but an account address and off/local/server) and `openOptions { section }` (a known options tab only). Its Chat contacts tab shows the same per-account choice and list as this add-on's own tab. 6 new tests load `src/pro.js` and `src/background.js` with a fake browser API (298 pass). Goes out in free 0.1.5, then the Pro merge.
 
 ### 2026-10-19
 - **0.1.4 passed in Thunderbird 158 (the maintainer).** Installed over Pro 0.2.9; the address book permission was granted, both accounts started OMEMO, no errors. Chat contacts tab: a real account's 12 roster contacts showed as expected (3 named from cards by phone number, 1 already named, 1 number on two cards with different names left unnamed, 7 not in the address book). "In Thunderbird and on the server": the names showed in Thunderbird's chat list; after a restart nothing was written again, so the server kept them; renaming a card made the chat name follow (one write, Thunderbird and the server) and follow back. "In Thunderbird only": a new card with an `xmpp:` chat address named that contact in Thunderbird, the phone's Cheogram still showed the bare address (nothing reached the server), and the name survived a restart. Found, for later: Thunderbird's chat list holds only the server roster (12 contacts) while Cheogram offers every phone contact (600+); Cheogram group texts (`+1...,+1...@cheogram.com`) match no card; Thunderbird's card editor only accepts chat addresses with their `xmpp:` prefix.
