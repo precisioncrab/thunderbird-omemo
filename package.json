@@ -10,7 +10,12 @@
     "test:coverage": "node --test --experimental-test-coverage \"test/**/*.test.js\"",
     "lint": "echo \"(add eslint config)\" && exit 0",
     "build": "node scripts/build.mjs",
-    "package": "node scripts/package.mjs"
+    "package": "node scripts/package.mjs",
+    "updates": "node scripts/updates.mjs"
+  },
+  "updates": {
+    "link": "https://github.com/precisioncrab/thunderbird-omemo/releases/download/v{version}/thunderbird-omemo-{version}.xpi",
+    "out": "updates.json"
   },
   "dependencies": {
     "@noble/ciphers": "^2.4.0",

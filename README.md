@@ -78,8 +78,12 @@ installed from a file, and Thunderbird has to be told to accept an unsigned add-
    to choose when chats are encrypted. The **Instructions** tab explains the `/omemo`
    chat commands; `/omemo help` in any chat opens it too.
 
-To update, install the new `.xpi` over the old one; don't remove the old version first.
-Your keys, verifications and settings stay in your Thunderbird profile either way.
+From 0.1.5 on, Thunderbird updates the add-on by itself: about once a day it reads
+`updates.json` in this repository and installs a newer release if there
+is one. To turn that off, open Add-ons and Themes > OMEMO for Thunderbird and set
+**Allow automatic updates** to Off. To update by hand (and from 0.1.4 or older), install
+the new `.xpi` over the old one; don't remove the old version first. Your keys,
+verifications and settings stay in your Thunderbird profile either way.
 
 ## Tested Thunderbird versions
 
@@ -121,8 +125,10 @@ uses:
   also your account's contact list on your XMPP server.
 - The settings, in the add-on's own WebExtension storage.
 
-It makes no other network connections: no telemetry, no update checks, no license
-server.
+It makes no other network connections: no telemetry, no license server. Separately,
+Thunderbird itself checks about once a day for a new version of the add-on, from where it
+was published (GitHub for this add-on, precisioncrab.com for OMEMO Pro). That check
+sends no account details or chat data, and can be turned off (see [Install](#install)).
 
 ## Where keys are kept
 
@@ -147,7 +153,8 @@ one can't be listed there or signed by Mozilla.
 
 Releases are therefore unsigned `.xpi` files on the
 [Releases](https://github.com/precisioncrab/thunderbird-omemo/releases) page, installed
-from file as described under [Install](#install). This add-on is a bridge until
+from file as described under [Install](#install), and from then on Thunderbird updates
+them from here. This add-on is a bridge until
 Thunderbird ships native OMEMO support. See `docs/PLAN.md` for the reasoning.
 
 ## Supporting this project

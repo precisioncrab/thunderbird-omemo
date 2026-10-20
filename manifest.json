@@ -8,6 +8,7 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "thunderbird-omemo@precisioncrab",
+      "update_url": "https://raw.githubusercontent.com/precisioncrab/thunderbird-omemo/main/updates.json",
       "strict_min_version": "128.0",
       "data_collection_permissions": {
         "required": [
