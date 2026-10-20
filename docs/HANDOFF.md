@@ -78,4 +78,4 @@ Known limits (also in `docs/STATUS.md`, "Open risks"): keys are stored unencrypt
 - **Chat text:** Thunderbird turns text smileys like `):` into emoji in every message, including the add-on's notices, so avoid them in `say()` strings.
 - **Line endings:** Windows git converts LF to CRLF on checkout; the warnings are harmless. `core.filemode false` is set.
 - **Finishing a change:** run `npm test`, update `docs/STATUS.md` (state table, next steps, a log entry) and any doc that names the change as next, then commit and push. No AI attribution trailers.
-- **Releases:** bump `manifest.json` and `package.json`, `npm run package`, then a GitHub release with the `.xpi` attached. There's no addons.thunderbird.net listing: it doesn't accept Experiment add-ons.
+- **Releases:** bump `manifest.json` and `package.json`, `npm run package`, then a GitHub release with the `.xpi` attached, and the same `.xpi` uploaded to the free Gumroad listing (pay what you want; planned 2026-10-19, live from 0.1.5). There's no addons.thunderbird.net listing: it doesn't accept Experiment add-ons.
