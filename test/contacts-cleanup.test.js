@@ -115,6 +115,26 @@ test("hello says which add-on and version answers", async () => {
   assert.deepEqual({ ...(await send({ command: "hello" })) }, { name: "OMEMO for Thunderbird", version: "0.1.5", pro: false, protocol: 1 });
 });
 
+test("hello from Contacts Cleanup notes it's installed (the options page then hides its card); others' don't", async () => {
+  const { send, store } = loadBackground();
+  send({ command: "hello" }, "someone-else@example.org");
+  assert.equal(store.contactsCleanup, undefined);
+  await send({ command: "hello" });
+  assert.deepEqual(store.contactsCleanup, { seen: true });
+});
+
+test("the options page and README say what Contacts Cleanup can ask for, and link it the same way", () => {
+  const page = read("src/options/options.html");
+  const readme = read("README.md");
+  const access = (text, heading) => text.slice(text.indexOf(heading), text.indexOf(heading) + 4000);
+  assert.match(access(page, "What this add-on can access"), /<li>Requests from Contacts Cleanup[^<]*and from no other add-on/);
+  assert.match(access(readme, "## What this add-on can access"), /Requests from \[Contacts Cleanup\]\(#more-from-precision-crab\)/);
+  const url = read("src/options/options.js").match(/const CONTACTS_CLEANUP = \{\s*url: "([^"]+)"/)?.[1];
+  assert.ok(url, "options.js has no Contacts Cleanup link");
+  assert.ok(readme.includes(`[Contacts Cleanup](${url})`), "the README links Contacts Cleanup somewhere else than the options page");
+  assert.ok(page.includes('id="cleanup"'), "the options page has no Contacts Cleanup card");
+});
+
 test("preview runs the chat names without writing", async () => {
   const { send, runs } = loadBackground();
   const result = await send({ command: "chatNames.preview" });

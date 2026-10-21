@@ -125,7 +125,7 @@
     [role="tabpanel"] h2:first-child {
       margin-top: 0;
     }
-    .pro {
+    .pro, .tip {
       display: grid;
       grid-template-columns: 1fr auto;
       gap: 4px 16px;
@@ -136,10 +136,13 @@
       background: color-mix(in srgb, AccentColor 8%, transparent);
       margin-bottom: 16px;
     }
-    .pro[hidden] {
+    .tip {
+      margin: 16px 0 0;
+    }
+    .pro[hidden], .tip[hidden] {
       display: none;
     }
-    .pro a {
+    .pro a, .tip a {
       grid-row: span 2;
       white-space: nowrap;
       padding: 6px 12px;
@@ -224,6 +227,11 @@
   <p class="detail">For each account, choose where the names go. <b>In Thunderbird only</b> names the contacts in Thunderbird's contact list and nowhere else. <b>In Thunderbird and on the server</b> also saves each name in the account's contact list on your XMPP server, so your other chat apps on that account (Conversations, Cheogram) show it too.</p>
   <div id="chat-names"><p class="detail">Loading...</p></div>
   <p class="note">Only connected accounts are listed. Once an account is switched on, its names follow your address book: new and changed cards are picked up, also when the account connects. A name you change yourself is left alone.</p>
+  <aside class="tip" id="cleanup" hidden>
+    <span class="name">Contacts Cleanup</span>
+    <a id="cleanup-link" href="#" target="_blank" rel="noopener"></a>
+    <span class="detail" id="cleanup-text"></span>
+  </aside>
   </section>
 
   <section role="tabpanel" id="instructions" aria-labelledby="tab-instructions" hidden>
@@ -292,6 +300,7 @@
     <li>Its own key files, one per account, in the <code>omemo</code> folder of your Thunderbird profile. No other files.</li>
     <li>Your XMPP accounts' existing connections, to publish and fetch OMEMO keys on your own servers, and to save contact names there if you choose that on the Chat contacts tab.</li>
     <li>Your address books, read only, to find names for chat contacts (the Chat contacts tab). Names are written only where you choose there: Thunderbird's contact list, or also your account's contact list on your XMPP server.</li>
+    <li>Requests from Contacts Cleanup, the free address book add-on from the same maker, and from no other add-on. Through it you can see and change the Chat contacts tab's choices, open this page, and add people to an account's contact list on your XMPP server or take them off. Adding someone also asks to see when they're online, as Thunderbird's own Add Contact does. Contacts Cleanup asks for a change only when you make one there.</li>
     <li>The settings on the Settings and Chat contacts tabs, in the add-on's own storage.</li>
   </ul>
   <p class="detail">It makes no other network connections: no tracking, no license server. The source code is public, so anyone can check this.</p>

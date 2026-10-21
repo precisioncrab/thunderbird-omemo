@@ -238,6 +238,8 @@ browser.runtime.onMessageExternal.addListener((message, sender) => {
   }
   switch (message?.command) {
     case "hello": {
+      // Installed, so the options page stops showing its card.
+      browser.storage.local.set({ contactsCleanup: { seen: true } }).catch(() => {});
       const manifest = browser.runtime.getManifest();
       return Promise.resolve({ name: manifest.name, version: manifest.version, pro: OMEMO_PRO.isPro(manifest), protocol: 1 });
     }

@@ -258,6 +258,18 @@ async function saveNameMode(jid, mode) {
   await showChatNames("chatNames.apply");
 }
 
+/** Points a card's button at a web page, opened in the web browser rather than in Thunderbird. */
+function linkOut(link, text, url) {
+  link.textContent = text;
+  link.href = url;
+  link.addEventListener("click", (event) => {
+    if (browser.windows?.openDefaultBrowser) {
+      event.preventDefault();
+      browser.windows.openDefaultBrowser(url);
+    }
+  });
+}
+
 /** The Pro card, in the free add-on only. */
 function showPro() {
   const pro = globalThis.OMEMO_PRO;
@@ -266,20 +278,34 @@ function showPro() {
   }
   document.getElementById("pro-name").textContent = pro.name;
   document.getElementById("pro-text").textContent = `Audio calls with Cheogram, Conversations and other XMPP apps, in a call window in Thunderbird. Installs over this add-on and keeps your keys and verifications. ${pro.onSale ? `${pro.price}, one time.` : "Coming soon."}`;
-  const link = document.getElementById("pro-link");
-  link.textContent = pro.onSale ? "Get Pro" : "Learn more";
-  link.href = pro.url;
-  // Opens in the web browser, not in Thunderbird.
-  link.addEventListener("click", (event) => {
-    if (browser.windows?.openDefaultBrowser) {
-      event.preventDefault();
-      browser.windows.openDefaultBrowser(pro.url);
-    }
-  });
+  linkOut(document.getElementById("pro-link"), pro.onSale ? "Get Pro" : "Learn more", pro.url);
   document.getElementById("pro").hidden = false;
 }
 
+/*
+ * Contacts Cleanup, the free address book add-on: a card on the Chat contacts
+ * tab, in the free add-on and Pro alike, until Contacts Cleanup has talked to
+ * this add-on (the background script notes its hello). Not on
+ * addons.thunderbird.net yet: once it's listed, point `url` at its page
+ * there, set `listed`, and change the README's link to match.
+ */
+const CONTACTS_CLEANUP = {
+  url: "https://github.com/precisioncrab/contacts-cleanup",
+  listed: false,
+};
+
+async function showCleanup() {
+  const { contactsCleanup } = await browser.storage.local.get("contactsCleanup");
+  if (contactsCleanup?.seen) {
+    return;
+  }
+  document.getElementById("cleanup-text").textContent = `A free address book add-on from the same maker. It finds duplicate cards, puts phone numbers in one format and adds chat addresses (XMPP and JMP.chat) to cards, so more chat contacts get their names here. It can also put people from your cards on your chat list. ${CONTACTS_CLEANUP.listed ? "Free on Thunderbird's add-on site." : "Coming soon to Thunderbird's add-on site."}`;
+  linkOut(document.getElementById("cleanup-link"), CONTACTS_CLEANUP.listed ? "Get it free" : "Learn more", CONTACTS_CLEANUP.url);
+  document.getElementById("cleanup").hidden = false;
+}
+
 showPro();
+showCleanup().catch(() => {});
 load();
 showDevices().catch((e) => {
   document.getElementById("devices").textContent = `Couldn't list the devices: ${e?.message ?? e}`;

@@ -125,6 +125,12 @@ uses:
 - Your address books, read only, to find names for chat contacts (the Chat contacts
   tab). Names are written only where you choose there: Thunderbird's contact list, or
   also your account's contact list on your XMPP server.
+- Requests from [Contacts Cleanup](#more-from-precision-crab), the free address book
+  add-on from the same maker, and from no other add-on. Through it you can see and change
+  the Chat contacts tab's choices, open the options page, and add people to an account's
+  contact list on your XMPP server or take them off. Adding someone also asks to see when
+  they're online, as Thunderbird's own Add Contact does. Contacts Cleanup asks for a
+  change only when you make one there.
 - The settings, in the add-on's own WebExtension storage.
 
 It makes no other network connections: no telemetry, no license server. Separately,
@@ -174,6 +180,17 @@ it installs over this one and keeps your keys, verifications and settings.
 
 Get it on Gumroad: https://precisioncrab.gumroad.com/l/omemo-pro. Everything on this
 page stays free and open source.
+
+## More from Precision Crab
+
+- [Contacts Cleanup](https://github.com/precisioncrab/contacts-cleanup), free (coming
+  soon to addons.thunderbird.net): tidies Thunderbird's address book (duplicate cards,
+  phone number format, missing names) and adds XMPP and JMP.chat chat addresses to
+  cards, so more chat contacts get their names here. With this add-on installed, it can
+  also put people from your cards on your chat list.
+- [Daynizer](https://precisioncrab.com/apps/daynizer-thunderbird/): tasks, calendars and
+  contacts from your CalDAV and CardDAV server, as a Thunderbird add-on and a desktop
+  app. Free; the Thunderbird add-on also has a Pro version.
 
 ## License
 
