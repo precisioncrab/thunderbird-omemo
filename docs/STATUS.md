@@ -32,13 +32,15 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 | Chat contact names from the address book (`src/contacts/`, Chat contacts tab) | **Built and passed 2026-10-19 (test build 0.1.4, Thunderbird 158).** Per account: off (default), Thunderbird only, or also the server; never replaces a name a contact has; reruns when cards change and accounts connect | Project `NEXT.md` 2b, 2c |
 | Packaging (milestone 7) | **Done: 0.1.0 released** on GitHub (free, unsigned `.xpi`, sponsor button). Earlier notes: Self-distributed unsigned `.xpi` (ATN rejects Experiment add-ons); whether to charge is undecided. Done: the "What this add-on can access" section (README, Instructions tab) | `docs/PLAN.md` |
 
-**Tests:** `npm test` gives 298 passing. `npm run test:coverage` shows the crypto core fully covered apart from three unreachable length checks.
+**Tests:** `npm test` gives 302 passing. `npm run test:coverage` shows the crypto core fully covered apart from three unreachable length checks.
 
 **Repo:** public GitHub `precisioncrab/thunderbird-omemo`, branch `main`, since the 0.1.0 release (2026-09-26), starting from one fresh commit. The full development history before that is in the private `precisioncrab/thunderbird-omemo-dev` (local branch `dev-history`, remote `archive`). Commits use "Precision Crab" and the GitHub no-reply address. The repo is public: keep personal details (names, personal XMPP addresses) out of it; tests and docs use the test1/test2@test.snikket.chat accounts.
 
 **License:** MPL-2.0 (Thunderbird's own license), with MIT dependencies. Rule: no copyleft code in the repo, dev tooling included, so Thunderbird could adopt it (see `tools/gen-vectors/README.md`).
 
 ## Next steps
+
+**Test build 0.1.5 (2026-10-21), the first with automatic updates, the Contacts Cleanup listener and the Gumroad Pro link:** the maintainer tests it in Thunderbird; then the release in the order in `docs/HANDOFF.md` "Releases" (GitHub release `v0.1.5`, then `npm run updates` and push `updates.json`, then the same `.xpi` on the free Gumroad listing), then merge into Pro.
 
 0. ~~Publish 0.1.1~~ **Released 2026-10-02** (https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.1). The store file rename can only be seen with an account that has `+` or other unusual characters in its JID (the test accounts don't).
 1. **Watch the releases:** GitHub issues from users, and whether other Thunderbird versions (ESR 128/140, newer releases) load it. Record each in the README's "Tested Thunderbird versions" table (added 2026-10-17).
@@ -58,6 +60,9 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 - **The project-root docs are not in git:** `NEXT.md`, `_context.md` and `AGENTS.md` sit outside the repo. Consider moving them in.
 
 ## Log
+
+### 2026-10-21
+- **Test build 0.1.5: OMEMO Pro is on sale.** Both Gumroad listings went live (OMEMO for Thunderbird at https://precisioncrab.gumroad.com/l/omemo, OMEMO Pro for Thunderbird at https://precisioncrab.gumroad.com/l/omemo-pro; both answered 200). `src/pro.js`: `url` is Pro's listing and `onSale` is true, so the options page's Pro card says "$10, one time" with Get Pro, and `/call` gives the price and the link. README: the Pro section links the listing instead of "Coming soon", and the Install steps mention the same file on the free Gumroad listing (pay what you want, for an email when a new version is out); GitHub stays the main home. `test/pro.test.js`: the README-anchor test became a test that Pro is on sale with its Gumroad link and the README links it (302 pass). 0.1.5 also carries automatic updates and the Contacts Cleanup listener (2026-10-20). Not released yet: `updates.json` is written at release time.
 
 ### 2026-10-20
 - **Automatic updates (goes out in 0.1.5).** `manifest.json` gets `update_url` (`updates.json` on `main`, raw.githubusercontent.com); `npm run updates` writes that file after `npm run package` (version, GitHub release link, SHA-256 of the `.xpi`, minimum Thunderbird 128), in the format Thunderbird's `AddonUpdateChecker` reads (checked against its source: `applications.gecko.strict_min_version`, https link, optional `update_hash`). Where the `.xpi` is downloaded from comes from `package.json` `updates`, so the Pro build points elsewhere (precisioncrab.com). README, Instructions tab: the "no update checks" line now says Thunderbird checks once a day and how to turn it off. HANDOFF "Releases": the order (release, then push `updates.json`). 4 tests, 302 total, including a guard that a Pro build never updates from GitHub. Decided by the maintainer the same day: free updates from GitHub, Pro from precisioncrab.com.

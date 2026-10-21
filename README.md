@@ -71,7 +71,9 @@ installed from a file, and Thunderbird has to be told to accept an unsigned add-
    coordinate; OTR has also crashed Thunderbird in testing. Restart Thunderbird after
    changing it.
 3. Download `thunderbird-omemo-<version>.xpi` from the
-   [Releases](https://github.com/precisioncrab/thunderbird-omemo/releases) page.
+   [Releases](https://github.com/precisioncrab/thunderbird-omemo/releases) page. The
+   same file is also on [Gumroad](https://precisioncrab.gumroad.com/l/omemo) (pay what
+   you want, $0 is fine), if you'd like an email when a new version is out.
 4. Open Add-ons and Themes, click the gear icon, choose **Install Add-on From File**, and
    pick the `.xpi`. Restart Thunderbird.
 5. Open the add-on's options (Add-ons and Themes > OMEMO for Thunderbird > Options)
@@ -170,8 +172,8 @@ Cheogram, Conversations and other XMPP apps that support Jingle calls, in a call
 in Thunderbird, with a choice of microphone and speaker. It's this add-on plus calling:
 it installs over this one and keeps your keys, verifications and settings.
 
-**Coming soon.** This section will link to it once it's on sale. Everything on this page
-stays free and open source.
+Get it on Gumroad: https://precisioncrab.gumroad.com/l/omemo-pro. Everything on this
+page stays free and open source.
 
 ## License
 

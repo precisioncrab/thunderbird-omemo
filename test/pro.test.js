@@ -29,19 +29,18 @@ test("the Pro build is the one with the calls Experiment", () => {
   assert.equal(pro.isPro(undefined), false);
 });
 
-test("/call names Pro and its link, with the price once it's on sale", () => {
+test("/call names Pro, its price and its link", () => {
   const pro = loadPro();
-  assert.equal(pro.callHint(), `Audio calls are coming in OMEMO Pro for Thunderbird: ${pro.url}`);
-  pro.onSale = true;
   assert.equal(pro.callHint(), `Audio calls are part of OMEMO Pro for Thunderbird ($10, one time): ${pro.url}`);
+  pro.onSale = false;
+  assert.equal(pro.callHint(), `Audio calls are coming in OMEMO Pro for Thunderbird: ${pro.url}`);
 });
 
-test("the link before Pro is on sale goes to the README's Pro section", () => {
+test("Pro is on sale, and the link goes to its Gumroad listing, which the README links too", () => {
   const pro = loadPro();
-  const anchor = new URL(pro.url).hash.slice(1);
-  const headings = read("README.md").split(/\r?\n/).filter((l) => l.startsWith("## "))
-    .map((l) => l.slice(3).trim().toLowerCase().replace(/[^\w\s-]/g, "").replace(/\s+/g, "-"));
-  assert.ok(headings.includes(anchor), `no README heading for #${anchor}`);
+  assert.equal(pro.onSale, true);
+  assert.equal(pro.url, "https://precisioncrab.gumroad.com/l/omemo-pro");
+  assert.ok(read("README.md").includes(pro.url), "the README doesn't link Pro's listing");
 });
 
 test("the background and options pages load src/pro.js before their own scripts", () => {
