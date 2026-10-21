@@ -134,9 +134,9 @@
 
     <release>
       <Version>
-        <revision>0.1.6</revision>
+        <revision>0.1.7</revision>
         <created>2026-10-21</created>
-        <file-release rdf:resource='https://github.com/precisioncrab/thunderbird-omemo/releases/download/v0.1.6/thunderbird-omemo-0.1.6.xpi'/>
+        <file-release rdf:resource='https://github.com/precisioncrab/thunderbird-omemo/releases/download/v0.1.7/thunderbird-omemo-0.1.7.xpi'/>
       </Version>
     </release>
   </Project>
