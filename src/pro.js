@@ -3,7 +3,8 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /**
- * OMEMO Pro for Thunderbird, the paid version with audio calls, as this
+ * OMEMO for Thunderbird + Calls, the paid version with audio calls (called OMEMO Pro
+ * for Thunderbird until 2026-10-21; the code still says Pro), as this
  * free add-on mentions it: the Pro card on the options page and the answer
  * to /call. The one place to change when Pro goes on sale. The Pro build is
  * this same code plus the calls Experiment, and shows none of it.
@@ -14,7 +15,7 @@
 
 // eslint-disable-next-line no-unused-vars
 var OMEMO_PRO = {
-  name: "OMEMO Pro for Thunderbird",
+  name: "OMEMO for Thunderbird + Calls",
   price: "$10",
   // Its Gumroad listing (on sale since 2026-10-21).
   url: "https://precisioncrab.gumroad.com/l/omemo-pro",

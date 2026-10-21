@@ -135,7 +135,7 @@ uses:
 
 It makes no other network connections: no telemetry, no license server. Separately,
 Thunderbird itself checks about once a day for a new version of the add-on, from where it
-was published (GitHub for this add-on, precisioncrab.com for OMEMO Pro). That check
+was published (GitHub for this add-on, precisioncrab.com for OMEMO for Thunderbird + Calls). That check
 sends no account details or chat data, and can be turned off (see [Install](#install)).
 
 ## Where keys are kept
@@ -171,9 +171,9 @@ This add-on is free, and the hope is that Thunderbird adopts OMEMO natively (the
 MPL-2.0, Thunderbird's own license, for exactly that reason). If it's useful to you,
 please consider [sponsoring its development](https://github.com/sponsors/precisioncrab).
 
-## OMEMO Pro for Thunderbird
+## OMEMO for Thunderbird + Calls
 
-A paid version, OMEMO Pro for Thunderbird ($10, one time), adds audio calls with
+A paid version, OMEMO for Thunderbird + Calls ($10, one time), adds audio calls with
 Cheogram, Conversations and other XMPP apps that support Jingle calls, in a call window
 in Thunderbird, with a choice of microphone and speaker. It's this add-on plus calling:
 it installs over this one and keeps your keys, verifications and settings.

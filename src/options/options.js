@@ -14,7 +14,7 @@
  * (/omemo qr, /omemo help). Bundled with qrcode-generator (MIT) by
  * scripts/build.mjs into dist/options.js.
  *
- * In the free add-on, a card at the top points to OMEMO Pro for Thunderbird
+ * In the free add-on, a card at the top points to OMEMO for Thunderbird + Calls
  * (src/pro.js, loaded before this script); the Pro build doesn't show it.
  */
 
@@ -278,7 +278,7 @@ function showPro() {
   }
   document.getElementById("pro-name").textContent = pro.name;
   document.getElementById("pro-text").textContent = `Audio calls with Cheogram, Conversations and other XMPP apps, in a call window in Thunderbird. Installs over this add-on and keeps your keys and verifications. ${pro.onSale ? `${pro.price}, one time.` : "Coming soon."}`;
-  linkOut(document.getElementById("pro-link"), pro.onSale ? "Get Pro" : "Learn more", pro.url);
+  linkOut(document.getElementById("pro-link"), pro.onSale ? "Add calls" : "Learn more", pro.url);
   document.getElementById("pro").hidden = false;
 }
 

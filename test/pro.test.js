@@ -3,9 +3,10 @@
  * file, You can obtain one at http://mozilla.org/MPL/2.0/. */
 
 /**
- * Tests for src/pro.js, the free add-on's pointer to OMEMO Pro for
- * Thunderbird (the options page's card and the /call answer), and that the
- * pages load it before the scripts that read it.
+ * Tests for src/pro.js, the free add-on's pointer to OMEMO for Thunderbird
+ * + Calls, formerly OMEMO Pro for Thunderbird (the options page's card and
+ * the /call answer), and that the pages load it before the scripts that
+ * read it.
  */
 
 import test from "node:test";
@@ -31,9 +32,9 @@ test("the Pro build is the one with the calls Experiment", () => {
 
 test("/call names Pro, its price and its link", () => {
   const pro = loadPro();
-  assert.equal(pro.callHint(), `Audio calls are part of OMEMO Pro for Thunderbird ($10, one time): ${pro.url}`);
+  assert.equal(pro.callHint(), `Audio calls are part of OMEMO for Thunderbird + Calls ($10, one time): ${pro.url}`);
   pro.onSale = false;
-  assert.equal(pro.callHint(), `Audio calls are coming in OMEMO Pro for Thunderbird: ${pro.url}`);
+  assert.equal(pro.callHint(), `Audio calls are coming in OMEMO for Thunderbird + Calls: ${pro.url}`);
 });
 
 test("Pro is on sale, and the link goes to its Gumroad listing, which the README links too", () => {
