@@ -34,3 +34,4 @@ export * as bridge from "./omemo/bridge.js";
 export * as fingerprint from "./omemo/fingerprint.js";
 export * as contacts from "./contacts/chat-names.js";
 export * as groups from "./contacts/chat-groups.js";
+export * as sections from "./contacts/chat-sections.js";

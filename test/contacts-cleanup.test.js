@@ -25,6 +25,9 @@ function loadBackground() {
   const external = event();
   const runs = [];
   const groupRuns = [];
+  const sectionRuns = [];
+  const timers = [];
+  const storageChanged = event();
   const internal = event();
   const tabs = [];
   const sent = [];
@@ -49,13 +52,17 @@ function loadBackground() {
         groupRuns.push(request);
         return { accounts: [], applied: request.groups };
       },
+      async chatSections(settings) {
+        sectionRuns.push(settings);
+        return settings.on;
+      },
       async chatNames(options) {
         runs.push(options);
         return { cards: options.cards.length, accounts: [{ jid: "test1@test.snikket.chat", mode: options.modes["test1@test.snikket.chat"] ?? "off", contacts: [] }], written: options.written };
       },
     },
     storage: {
-      onChanged: event(),
+      onChanged: storageChanged,
       local: {
         async get(keys) {
           return Object.fromEntries([].concat(keys).filter((k) => k in store).map((k) => [k, structuredClone(store[k])]));
@@ -76,12 +83,12 @@ function loadBackground() {
     },
     tabs: { create: async (options) => tabs.push(options.url) },
   };
-  const context = vm.createContext({ browser, console: { log() {} }, setTimeout: () => 0, clearTimeout() {}, structuredClone });
+  const context = vm.createContext({ browser, console: { log() {} }, setTimeout: (f) => timers.push(f), clearTimeout() {}, structuredClone });
   vm.runInContext(read("src/pro.js"), context);
   vm.runInContext(read("src/background.js"), context);
   const send = (message, id = "contacts-cleanup@precisioncrab") => external.listeners[0](message, { id });
   const ask = (message) => internal.listeners[0](message, {});
-  return { send, ask, store, runs, groupRuns, tabs, sent };
+  return { send, ask, store, runs, groupRuns, sectionRuns, timers, storageChanged, tabs, sent };
 }
 
 test("chat contacts: added with their names and asked for presence; refusals and bad addresses reported", async () => {
@@ -176,20 +183,33 @@ test("openOptions opens the options page at a known tab only", async () => {
   assert.deepEqual(tabs, ["moz-extension://omemo/src/options/options.html#contacts", "moz-extension://omemo/src/options/options.html#settings"]);
 });
 
-test("the options page's group choices run with their names, and what was applied is kept", async () => {
-  const { ask, store, groupRuns } = loadBackground();
-  assert.equal(await ask({ command: "chatGroups.apply" }), null, "nothing on, nothing applied: no run");
-  store.chatGroups = { accounts: {
-    "main@example.org": { on: true, name: " Main " },
-    "second@example.org": { on: false, name: "second" },
-    "third@example.org": { on: true, name: "  " },
-  } };
-  await ask({ command: "chatGroups.apply" });
-  assert.deepEqual(JSON.parse(JSON.stringify(groupRuns.at(-1))), { groups: { "main@example.org": "Main" }, applied: {} });
-  assert.deepEqual(store.chatGroupsApplied, { "main@example.org": "Main" });
-  // Turned off: one more run, with what was applied, so the contacts move back.
-  store.chatGroups.accounts["main@example.org"].on = false;
-  await ask({ command: "chatGroups.apply" });
-  assert.deepEqual(JSON.parse(JSON.stringify(groupRuns.at(-1))), { groups: {}, applied: { "main@example.org": "Main" } });
+const plain = (x) => JSON.parse(JSON.stringify(x));
+
+test("a section per account: on from the start, with the names chosen, and sent again when they change", async () => {
+  const { ask, store, sectionRuns, storageChanged } = loadBackground();
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(plain(sectionRuns), [{ on: true, names: {} }]);
+  store.chatGroups = { accounts: { "main@example.org": { name: " Main " }, "third@example.org": { name: "  " } } };
+  storageChanged.listeners.forEach((f) => f({ chatGroups: {} }, "local"));
+  await new Promise((r) => setImmediate(r));
+  assert.deepEqual(plain(sectionRuns.at(-1)), { on: true, names: { "main@example.org": "Main" } });
+  store.chatSections = { on: false };
+  assert.equal(await ask({ command: "chatSections.apply" }), false);
+  assert.deepEqual(plain(sectionRuns.at(-1)), { on: false, names: { "main@example.org": "Main" } });
+  storageChanged.listeners.forEach((f) => f({ settings: {} }, "local"));
+  await new Promise((r) => setImmediate(r));
+  assert.equal(sectionRuns.length, 3, "other settings don't resend the sections");
+});
+
+test("the groups test build 0.1.8 made are undone, and none are made", async () => {
+  const { store, groupRuns, timers } = loadBackground();
+  store.chatGroups = { accounts: { "main@example.org": { on: true, name: "Main" } } };
+  store.chatGroupsApplied = { "main@example.org": "Main" };
+  timers.forEach((f) => f());
+  await new Promise((r) => setTimeout(r, 10));
+  assert.deepEqual(plain(groupRuns), [{ groups: {}, applied: { "main@example.org": "Main" } }]);
   assert.deepEqual(store.chatGroupsApplied, {});
+  timers.forEach((f) => f());
+  await new Promise((r) => setTimeout(r, 10));
+  assert.equal(groupRuns.length, 1, "nothing left to undo: no run");
 });

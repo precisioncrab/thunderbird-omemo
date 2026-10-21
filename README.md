@@ -50,10 +50,14 @@ Cheogram chats in both directions. What's in place:
   by phone number in any format, or by chat or email address. Per account, on the options page's Chat contacts tab: off (the default),
   in Thunderbird only, or also on your server so your other chat apps show the names.
   Names a contact already has are never replaced.
-- A group per account in Thunderbird's chat contact list (in test builds, not in a release
-  yet), so you can tell which account a contact is on. Per account, on the Chat contacts
-  tab, with a name you choose (it starts as the first part of the account's address). In
-  Thunderbird only: your server and your other chat apps keep their own groups.
+- A section per account in Thunderbird's chat list (in test builds, not in a release
+  yet). Thunderbird lists every contact together under Online contacts and Offline
+  contacts, so with two accounts you can't tell which one a contact is on. This gives each
+  account its own section, with that account's contacts, online first; someone on two
+  accounts shows in both, and opening them from a section chats from that account. Each
+  section's name is yours to choose on the Chat contacts tab (it starts as the first part
+  of the account's address), and the sections can be switched off there. In Thunderbird
+  only: your server and your other chat apps don't change.
 
 Not done yet: group chats. The crypto core matches reference implementations byte for
 byte where references exist.
@@ -128,9 +132,8 @@ uses:
 - Your address books, read only, to find names for chat contacts (the Chat contacts
   tab). Names are written only where you choose there: Thunderbird's contact list, or
   also your account's contact list on your XMPP server.
-- Thunderbird's chat contact list, to put each account's chat contacts in a group of
-  their own if you choose that on the Chat contacts tab. In Thunderbird only; nothing is
-  sent to your server.
+- Thunderbird's chat list, to show a section per account (switched off on the Chat
+  contacts tab). In Thunderbird only; nothing is sent to your server.
 - Requests from [Contacts Cleanup](#more-from-precision-crab), the free address book
   add-on from the same maker, and from no other add-on. Through it you can see and change
   the Chat contacts tab's choices, open the options page, and add people to an account's

@@ -126,27 +126,44 @@ for (const event of [browser.contacts.onCreated, browser.contacts.onUpdated, bro
 browser.omemoXmpp.onAccountConnected.addListener(applyChatNamesSoon);
 
 /*
- * A group per account in Thunderbird's chat contact list (src/contacts/
- * chat-groups.js, run by the Experiment's chatGroups), in Thunderbird only.
- * Each account's choice is in storage as chatGroups: { accounts: { <jid>:
- * { on, name } } }, and the groups last put in place as chatGroupsApplied, so
- * turning one off or renaming it moves the contacts out of the old one. Runs
- * when an account connects, when a chat contact lands in a group (Thunderbird
- * moves contacts back to their server groups when an account connects, and
- * new contacts land in "Contacts"), and when the options page saves a choice.
+ * A section per account in Thunderbird's chat contact list (src/contacts/
+ * chat-sections.js, run by the Experiment's chatSections), in Thunderbird
+ * only. On unless turned off on the options page (chatSections: { on }); each
+ * account's section name is in storage as chatGroups: { accounts: { <jid>:
+ * { name } } }.
+ */
+async function sendChatSections() {
+  const { chatSections, chatGroups } = await browser.storage.local.get(["chatSections", "chatGroups"]);
+  const names = {};
+  for (const [jid, choice] of Object.entries(chatGroups?.accounts ?? {})) {
+    const name = String(choice?.name ?? "").trim();
+    if (name) {
+      names[jid] = name;
+    }
+  }
+  return browser.omemoXmpp.chatSections({ on: chatSections?.on ?? true, names });
+}
+sendChatSections().catch((e) => console.log(`[omemo] ERROR: showing a section per account failed: ${e?.message ?? e}`));
+browser.storage.onChanged.addListener((changes, area) => {
+  if (area === "local" && (changes.chatSections || changes.chatGroups)) {
+    sendChatSections().catch((e) => console.log(`[omemo] ERROR: showing a section per account failed: ${e?.message ?? e}`));
+  }
+});
+
+/*
+ * Test build 0.1.8 put each account's chat contacts in a group (a tag) of
+ * their own (src/contacts/chat-groups.js), but Thunderbird's chat list never
+ * shows its groups, so the sections above replaced it. This moves the
+ * contacts 0.1.8 moved back to their server group or "Contacts": the groups
+ * it put in place are in storage as chatGroupsApplied, and an account that
+ * isn't connected is done when it connects.
  */
 let chatGroupsQueue = Promise.resolve();
 
 function runChatGroups() {
   const run = chatGroupsQueue.then(async () => {
-    const { chatGroups, chatGroupsApplied } = await browser.storage.local.get(["chatGroups", "chatGroupsApplied"]);
+    const { chatGroupsApplied } = await browser.storage.local.get("chatGroupsApplied");
     const groups = {};
-    for (const [jid, choice] of Object.entries(chatGroups?.accounts ?? {})) {
-      const name = String(choice?.name ?? "").trim();
-      if (choice?.on && name) {
-        groups[jid] = name;
-      }
-    }
     const applied = chatGroupsApplied ?? {};
     if (!Object.keys(groups).length && !Object.keys(applied).length) {
       return null;
@@ -172,6 +189,7 @@ function applyChatGroupsSoon() {
 }
 browser.omemoXmpp.onAccountConnected.addListener(applyChatGroupsSoon);
 browser.omemoXmpp.onChatContactsChanged.addListener(applyChatGroupsSoon);
+applyChatGroupsSoon();
 
 browser.runtime.onMessage.addListener((message) => {
   if (message?.command === "chatNames.preview") {
@@ -181,9 +199,9 @@ browser.runtime.onMessage.addListener((message) => {
   if (message?.command === "chatNames.apply") {
     return runChatNames(true).then((result) => result ?? runChatNames(false));
   }
-  // After the options page saved an account's group.
-  if (message?.command === "chatGroups.apply") {
-    return runChatGroups();
+  // After the options page saved the sections' choice.
+  if (message?.command === "chatSections.apply") {
+    return sendChatSections();
   }
   return undefined;
 });

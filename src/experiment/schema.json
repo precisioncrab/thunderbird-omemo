@@ -144,6 +144,22 @@
         ]
       },
       {
+        "name": "chatSections",
+        "type": "function",
+        "description": "A section per account in Thunderbird's chat contact list, in Thunderbird only (src/contacts/chat-sections.js): on shows one section per account, named names[jid] or the part of the account's address before the @, in place of Online contacts and Offline contacts; off puts Thunderbird's list back. Returns whether the sections show.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "settings",
+            "type": "object",
+            "properties": {
+              "on": { "type": "boolean" },
+              "names": { "type": "object", "optional": true, "additionalProperties": { "type": "string" } }
+            }
+          }
+        ]
+      },
+      {
         "name": "sendStanza",
         "type": "function",
         "description": "Generic hook: sends a stanza, given as XML text, from the connected account with this bare JID.",

@@ -183,52 +183,44 @@ function namesRow(contact, mode) {
 }
 
 /*
- * A group per account in Thunderbird's chat contact list, in Thunderbird
- * only: each account's choice is saved as chatGroups.accounts[jid] =
- * { on, name }, and the background script moves the contacts.
+ * A section per account in Thunderbird's chat contact list, in Thunderbird
+ * only: on unless switched off (chatSections.on); each account's section
+ * name is saved as chatGroups.accounts[jid].name, and the background script
+ * sends both to the Experiment when they change.
  */
-function groupStatus(status, result, jid) {
-  const account = result?.accounts?.find((a) => a.jid === jid);
-  if (!result || !account) {
-    status.textContent = result === null ? "" : "Couldn't change the group; see the add-on's console.";
-    return;
-  }
-  status.textContent = account.group
-    ? `${plural(account.contacts, "chat contact", "chat contacts")} in "${account.group}".`
-    : "Off: the chat contacts are back in their usual groups.";
+async function showChatSections() {
+  const box = document.getElementById("chat-sections");
+  const status = document.getElementById("chat-sections-status");
+  const { chatSections } = await browser.storage.local.get("chatSections");
+  box.checked = chatSections?.on ?? true;
+  box.addEventListener("change", async () => {
+    await browser.storage.local.set({ chatSections: { on: box.checked } });
+    try {
+      const on = await browser.runtime.sendMessage({ command: "chatSections.apply" });
+      status.textContent = on ? "The chat list shows a section per account." : "The chat list shows Online contacts and Offline contacts again.";
+    } catch (e) {
+      status.textContent = `Couldn't change the chat list: ${e?.message ?? e}`;
+    }
+  });
 }
 
-function groupRow(jid, choice) {
+function sectionRow(jid, choice) {
   const row = document.createElement("label");
   row.className = "group-row";
-  const on = document.createElement("input");
-  on.type = "checkbox";
-  on.checked = Boolean(choice?.on);
   const name = document.createElement("input");
   name.type = "text";
   name.maxLength = 64;
   name.value = choice?.name || defaultGroupName(jid);
-  name.disabled = !on.checked;
-  name.setAttribute("aria-label", "Group name");
-  const status = document.createElement("span");
-  status.className = "detail";
-  const save = async () => {
-    name.disabled = !on.checked;
+  name.setAttribute("aria-label", "Section name");
+  name.addEventListener("change", async () => {
     if (!groupName(name.value)) {
       name.value = defaultGroupName(jid);
     }
     const { chatGroups } = await browser.storage.local.get("chatGroups");
-    const accounts = { ...chatGroups?.accounts, [jid]: { on: on.checked, name: groupName(name.value) } };
+    const accounts = { ...chatGroups?.accounts, [jid]: { name: groupName(name.value) } };
     await browser.storage.local.set({ chatGroups: { ...chatGroups, accounts } });
-    try {
-      groupStatus(status, await browser.runtime.sendMessage({ command: "chatGroups.apply" }), jid);
-    } catch (e) {
-      status.textContent = `Couldn't change the group: ${e?.message ?? e}`;
-    }
-  };
-  on.addEventListener("change", save);
-  name.addEventListener("change", save);
-  row.append(on, " Own group in the chat list:", name, status);
+  });
+  row.append("Section name in the chat list:", name);
   return row;
 }
 
@@ -271,7 +263,7 @@ function renderChatNames(result, groups = {}) {
     const summary = document.createElement("p");
     summary.className = "detail";
     summary.textContent = namesSummary(account);
-    box.append(name, label, summary, groupRow(account.jid, groups[account.jid]));
+    box.append(name, sectionRow(account.jid, groups[account.jid]), label, summary);
 
     if (account.contacts.length) {
       const details = document.createElement("details");
@@ -363,3 +355,4 @@ showDevices().catch((e) => {
   document.getElementById("devices").textContent = `Couldn't list the devices: ${e?.message ?? e}`;
 });
 showChatNames();
+showChatSections();

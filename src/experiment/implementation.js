@@ -28,6 +28,7 @@ const XMPP_BASE_URL = "resource:///modules/xmpp-base.sys.mjs";
 const XMPP_XML_URL = "resource:///modules/xmpp-xml.sys.mjs";
 const IM_SERVICES_URL = "resource:///modules/IMServices.sys.mjs";
 const TIMER_URL = "resource://gre/modules/Timer.sys.mjs";
+const EXTENSION_SUPPORT_URL = "resource:///modules/ExtensionSupport.sys.mjs";
 
 // The core, bundled by scripts/build.mjs, loads from the add-on's own files
 // through a resource:// name (docs/TASKS.md 3.1). Gecko caches ES modules by
@@ -113,6 +114,142 @@ function observeGroups(on) {
       Services.obs.addObserver(_groupObserver, "contact-tag-added");
     } else {
       Services.obs.removeObserver(_groupObserver, "contact-tag-added");
+    }
+  });
+}
+
+// A section per account in Thunderbird's chat contact list
+// (src/contacts/chat-sections.js holds the list work): set by chatSections
+// from the options page's choice. Each main window (messenger.xhtml) gets
+// the sections when it opens and whenever chat contacts or accounts change;
+// Online contacts and Offline contacts are hidden by a style sheet meanwhile.
+const SECTIONS_LISTENER = "thunderbird-omemo-chat-sections";
+const SECTIONS_WINDOW_URL = "chrome://messenger/content/messenger.xhtml";
+const SECTIONS_REBUILD_TOPICS = [
+  "contact-added", "contact-removed", "contact-no-longer-dummy",
+  "account-buddy-added", "account-buddy-removed",
+  "account-added", "account-removed", "account-connected", "account-disconnected",
+  "prpl-init", "chat-core-initialized",
+];
+const SECTIONS_MOVE_TOPICS = ["contact-signed-on", "contact-signed-off"];
+let _sections = { on: false, names: {} };
+let _sectionsListening = false;
+let _sectionsTimer = null;
+const _sectionsSheet = () => `data:text/css,${encodeURIComponent(_core?.sections?.SECTIONS_CSS ?? "")}`;
+
+/** Thunderbird's main windows, where the chat list is. */
+function sectionsWindows() {
+  return [...Services.wm.getEnumerator("mail:3pane")].filter((w) => w.location?.href === SECTIONS_WINDOW_URL);
+}
+
+function sectionsSheet(win, on) {
+  const utils = win.windowUtils;
+  const uri = _sectionsSheet();
+  safely(on ? "loading the chat sections' style" : "removing the chat sections' style", () => {
+    if (on && !win.__omemoSectionsSheet) {
+      utils.loadSheetUsingURIString(uri, utils.AUTHOR_SHEET);
+      win.__omemoSectionsSheet = uri;
+    } else if (!on && win.__omemoSectionsSheet) {
+      utils.removeSheetUsingURIString(win.__omemoSectionsSheet, utils.AUTHOR_SHEET);
+      delete win.__omemoSectionsSheet;
+    }
+  });
+}
+
+/** Opens the chat from the section's account when the contact is on more than one. */
+function sectionsOpen(win, row, accountId) {
+  const { IMServices } = ChromeUtils.importESModule(IM_SERVICES_URL);
+  const contact = row.contact;
+  const sections = _core.sections;
+  const accountBuddy = sections.accountIdsOf(contact).size > 1 ? sections.accountBuddyOn(contact, accountId) : null;
+  let prplConv = null;
+  if (accountBuddy?.account?.connected) {
+    prplConv = safely("opening the chat from that account", () => accountBuddy.createConversation()) ?? null;
+  }
+  prplConv ??= contact.createConversation();
+  const uiConv = IMServices.conversations.getUIConversation(prplConv);
+  if (uiConv.target !== prplConv) {
+    uiConv.target = prplConv;
+  }
+  win.chatHandler.focusConversation(uiConv);
+}
+
+function sectionsApply(win) {
+  safely("showing a section per account in the chat list", () => {
+    const listbox = win.document?.getElementById("contactlistbox");
+    if (!listbox || !_core?.sections) {
+      return;
+    }
+    const sections = _core.sections;
+    if (!_sections.on) {
+      sections.removeSections(listbox);
+      sectionsSheet(win, false);
+      return;
+    }
+    const { IMServices } = ChromeUtils.importESModule(IM_SERVICES_URL);
+    if (!IMServices.core.initialized) {
+      return;
+    }
+    sectionsSheet(win, true);
+    const accounts = IMServices.accounts.getAccounts().map((a) => ({
+      id: a.id,
+      label: sections.sectionLabel({ jid: a.protocol?.id === PRPL_XMPP ? a.normalizedName : "", name: a.name }, _sections.names),
+    }));
+    const plan = sections.planSections(accounts, IMServices.contacts.getContacts());
+    sections.syncSections(listbox, plan, {
+      createGroup: () => win.document.createXULElement("richlistitem", { is: "chat-group-richlistitem" }),
+      onRow: (row, accountId) => {
+        row.openConversation = () => safely("opening a chat", () => sectionsOpen(win, row, accountId));
+      },
+    });
+  });
+}
+
+// Many notifications come at once when an account connects; one run after them.
+function sectionsApplySoon() {
+  const { setTimeout, clearTimeout } = ChromeUtils.importESModule(TIMER_URL);
+  clearTimeout(_sectionsTimer);
+  _sectionsTimer = setTimeout(() => sectionsWindows().forEach(sectionsApply), 300);
+}
+
+const _sectionsObserver = {
+  observe(subject, topic) {
+    if (SECTIONS_MOVE_TOPICS.includes(topic)) {
+      safely("ordering a chat section", () => {
+        for (const win of sectionsWindows()) {
+          const listbox = win.document?.getElementById("contactlistbox");
+          if (listbox) {
+            _core.sections.repositionContact(listbox, subject);
+          }
+        }
+      });
+      return;
+    }
+    sectionsApplySoon();
+  },
+};
+
+function sectionsListen(on) {
+  if (on === _sectionsListening) {
+    return;
+  }
+  _sectionsListening = on;
+  safely(on ? "watching the chat list for its sections" : "no longer watching the chat list", () => {
+    const { ExtensionSupport } = ChromeUtils.importESModule(EXTENSION_SUPPORT_URL);
+    for (const topic of [...SECTIONS_REBUILD_TOPICS, ...SECTIONS_MOVE_TOPICS]) {
+      if (on) {
+        Services.obs.addObserver(_sectionsObserver, topic);
+      } else {
+        Services.obs.removeObserver(_sectionsObserver, topic);
+      }
+    }
+    if (on) {
+      ExtensionSupport.registerWindowListener(SECTIONS_LISTENER, {
+        chromeURLs: [SECTIONS_WINDOW_URL],
+        onLoadWindow: (win) => sectionsApply(win),
+      });
+    } else {
+      ExtensionSupport.unregisterWindowListener(SECTIONS_LISTENER);
     }
   });
 }
@@ -445,6 +582,22 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
           })) ?? null;
         },
 
+        async chatSections(settings) {
+          _core ??= loadCore(context.extension);
+          if (!_core) {
+            throw new Error("[omemo] The core didn't load; see the [omemo] ERROR line.");
+          }
+          _sections = { on: Boolean(settings?.on), names: { ...settings?.names } };
+          if (_sections.on) {
+            sectionsListen(true);
+            sectionsWindows().forEach(sectionsApply);
+          } else {
+            sectionsWindows().forEach(sectionsApply);
+            sectionsListen(false);
+          }
+          return _sections.on;
+        },
+
         async sendStanza(jid, xml) {
           const { account, stanza } = accountAndStanza(jid, xml);
           account.sendStanza(stanza);
@@ -525,6 +678,13 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
   }
 
   onShutdown(isAppShutdown) {
+    // Thunderbird's own Online and Offline contacts come back.
+    if (!isAppShutdown) {
+      _sections = { on: false, names: {} };
+      safely("taking the chat sections out", () => sectionsWindows().forEach(sectionsApply));
+    }
+    sectionsListen(false);
+    safely("stopping the chat sections' timer", () => ChromeUtils.importESModule(TIMER_URL).clearTimeout(_sectionsTimer));
     _connectedSinks.clear();
     observeConnects(false);
     _groupSinks.clear();
