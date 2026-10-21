@@ -1,0 +1,143 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<rdf:RDF xmlns:rdf='http://www.w3.org/1999/02/22-rdf-syntax-ns#'
+         xmlns:foaf='http://xmlns.com/foaf/0.1/'
+         xmlns='http://usefulinc.com/ns/doap#'
+         xmlns:xmpp='https://linkmauve.fr/ns/xmpp-doap#'
+         xmlns:schema='https://schema.org/'>
+  <Project>
+    <name>OMEMO for Thunderbird</name>
+
+    <created>2026-09-26</created>
+
+    <shortdesc xml:lang='en'>OMEMO encryption for Thunderbird's built-in XMPP chat</shortdesc>
+
+    <description xml:lang='en'>An add-on for Mozilla Thunderbird that encrypts one-to-one chats in Thunderbird's built-in XMPP chat with OMEMO, in both the eu.siacs.conversations.axolotl and urn:xmpp:omemo:2 namespaces. Conversations-style trust, verification by fingerprint or QR code, and names for chat contacts from the address book. Installed from a file; it hooks Thunderbird's own XMPP code through an Experiment API.</description>
+
+    <homepage rdf:resource='https://github.com/precisioncrab/thunderbird-omemo'/>
+    <download-page rdf:resource='https://github.com/precisioncrab/thunderbird-omemo/releases'/>
+    <bug-database rdf:resource='https://github.com/precisioncrab/thunderbird-omemo/issues'/>
+
+    <license rdf:resource='https://www.mozilla.org/en-US/MPL/2.0/'/>
+
+    <language>en</language>
+
+    <programming-language>JavaScript</programming-language>
+
+    <os>Linux</os>
+    <os>macOS</os>
+    <os>Windows</os>
+
+    <category rdf:resource='https://linkmauve.fr/ns/xmpp-doap#category-client'/>
+
+    <maintainer>
+      <foaf:Organization>
+        <foaf:name>Precision Crab</foaf:name>
+        <foaf:homepage rdf:resource='https://precisioncrab.com/'/>
+      </foaf:Organization>
+    </maintainer>
+
+    <repository>
+      <GitRepository>
+        <browse rdf:resource='https://github.com/precisioncrab/thunderbird-omemo'/>
+        <location rdf:resource='https://github.com/precisioncrab/thunderbird-omemo.git'/>
+      </GitRepository>
+    </repository>
+
+    <!-- XEP-0004: Data Forms (publish options for the OMEMO nodes) -->
+    <implements>
+      <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource='https://xmpp.org/extensions/xep-0004.html'/>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:since>0.1.0</xmpp:since>
+        <xmpp:note xml:lang='en'>Only for PubSub publish options</xmpp:note>
+      </xmpp:SupportedXep>
+    </implements>
+
+    <!-- XEP-0060: Publish-Subscribe -->
+    <implements>
+      <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource='https://xmpp.org/extensions/xep-0060.html'/>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:since>0.1.0</xmpp:since>
+        <xmpp:note xml:lang='en'>Publishing and fetching OMEMO device lists and bundles</xmpp:note>
+      </xmpp:SupportedXep>
+    </implements>
+
+    <!-- XEP-0115: Entity Capabilities -->
+    <implements>
+      <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource='https://xmpp.org/extensions/xep-0115.html'/>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:since>0.1.0</xmpp:since>
+        <xmpp:note xml:lang='en'>Adds the OMEMO device list notify features to Thunderbird's own capabilities</xmpp:note>
+      </xmpp:SupportedXep>
+    </implements>
+
+    <!-- XEP-0163: Personal Eventing Protocol -->
+    <implements>
+      <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource='https://xmpp.org/extensions/xep-0163.html'/>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:since>0.1.0</xmpp:since>
+        <xmpp:note xml:lang='en'>OMEMO device list notifications</xmpp:note>
+      </xmpp:SupportedXep>
+    </implements>
+
+    <!-- XEP-0280: Message Carbons -->
+    <implements>
+      <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource='https://xmpp.org/extensions/xep-0280.html'/>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:since>0.1.0</xmpp:since>
+        <xmpp:note xml:lang='en'>Decrypts carbon copies of encrypted messages sent from your other devices</xmpp:note>
+      </xmpp:SupportedXep>
+    </implements>
+
+    <!-- XEP-0334: Message Processing Hints -->
+    <implements>
+      <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource='https://xmpp.org/extensions/xep-0334.html'/>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:since>0.1.0</xmpp:since>
+        <xmpp:note xml:lang='en'>Store hint on encrypted messages</xmpp:note>
+      </xmpp:SupportedXep>
+    </implements>
+
+    <!-- XEP-0380: Explicit Message Encryption -->
+    <implements>
+      <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource='https://xmpp.org/extensions/xep-0380.html'/>
+        <xmpp:status>complete</xmpp:status>
+        <xmpp:since>0.1.0</xmpp:since>
+      </xmpp:SupportedXep>
+    </implements>
+
+    <!-- XEP-0384: OMEMO Encryption -->
+    <implements>
+      <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource='https://xmpp.org/extensions/xep-0384.html'/>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:since>0.1.0</xmpp:since>
+        <xmpp:note xml:lang='en'>One-to-one chats, eu.siacs.conversations.axolotl and urn:xmpp:omemo:2; no group chats yet</xmpp:note>
+      </xmpp:SupportedXep>
+    </implements>
+
+    <!-- XEP-0420: Stanza Content Encryption -->
+    <implements>
+      <xmpp:SupportedXep>
+        <xmpp:xep rdf:resource='https://xmpp.org/extensions/xep-0420.html'/>
+        <xmpp:status>partial</xmpp:status>
+        <xmpp:since>0.1.0</xmpp:since>
+        <xmpp:note xml:lang='en'>As used by urn:xmpp:omemo:2 message bodies</xmpp:note>
+      </xmpp:SupportedXep>
+    </implements>
+
+    <release>
+      <Version>
+        <revision>0.1.6</revision>
+        <created>2026-10-21</created>
+        <file-release rdf:resource='https://github.com/precisioncrab/thunderbird-omemo/releases/download/v0.1.6/thunderbird-omemo-0.1.6.xpi'/>
+      </Version>
+    </release>
+  </Project>
+</rdf:RDF>
