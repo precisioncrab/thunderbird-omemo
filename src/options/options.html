@@ -158,9 +158,16 @@
       border-radius: 6px;
       margin-bottom: 10px;
     }
-    .account select {
+    .account select, .account input[type="text"] {
       font: inherit;
       margin-left: 6px;
+    }
+    .account .group-row {
+      display: block;
+      margin-top: 8px;
+    }
+    .account .group-row .detail {
+      margin-left: 8px;
     }
     .account p {
       margin: 8px 0 0;
@@ -225,6 +232,7 @@
   <h2>Names from your address book</h2>
   <p class="detail">Chat contacts that show only an address can get their name from your address book. Phone number contacts (SMS through Cheogram, Quicksy) are matched by phone number, in any format; others by the chat address or email address on the card. A name a contact already has is never replaced, and a number that's on cards with different names gets no name.</p>
   <p class="detail">For each account, choose where the names go. <b>In Thunderbird only</b> names the contacts in Thunderbird's contact list and nowhere else. <b>In Thunderbird and on the server</b> also saves each name in the account's contact list on your XMPP server, so your other chat apps on that account (Conversations, Cheogram) show it too.</p>
+  <p class="detail"><b>Own group in the chat list</b> puts an account's chat contacts in a group of their own in Thunderbird's chat contact list, so you can tell which account a contact is on. You choose the group's name; it starts as the first part of the account's address. It's in Thunderbird only: your server and your other chat apps keep their own groups. A contact on two accounts shows in both groups.</p>
   <div id="chat-names"><p class="detail">Loading...</p></div>
   <p class="note">Only connected accounts are listed. Once an account is switched on, its names follow your address book: new and changed cards are picked up, also when the account connects. A name you change yourself is left alone.</p>
   <aside class="tip" id="cleanup" hidden>
@@ -301,6 +309,7 @@
     <li>Your XMPP accounts' existing connections, to publish and fetch OMEMO keys on your own servers, and to save contact names there if you choose that on the Chat contacts tab.</li>
     <li>Your address books, read only, to find names for chat contacts (the Chat contacts tab). Names are written only where you choose there: Thunderbird's contact list, or also your account's contact list on your XMPP server.</li>
     <li>Requests from Contacts Cleanup, the free address book add-on from the same maker, and from no other add-on. Through it you can see and change the Chat contacts tab's choices, open this page, and add people to an account's contact list on your XMPP server or take them off. Adding someone also asks to see when they're online, as Thunderbird's own Add Contact does. Contacts Cleanup asks for a change only when you make one there.</li>
+    <li>Thunderbird's chat contact list, to put each account's chat contacts in a group of their own if you choose that on the Chat contacts tab. In Thunderbird only; nothing is sent to your server.</li>
     <li>The settings on the Settings and Chat contacts tabs, in the add-on's own storage.</li>
   </ul>
   <p class="detail">It makes no other network connections: no tracking, no license server. The source code is public, so anyone can check this.</p>

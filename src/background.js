@@ -125,6 +125,54 @@ for (const event of [browser.contacts.onCreated, browser.contacts.onUpdated, bro
 }
 browser.omemoXmpp.onAccountConnected.addListener(applyChatNamesSoon);
 
+/*
+ * A group per account in Thunderbird's chat contact list (src/contacts/
+ * chat-groups.js, run by the Experiment's chatGroups), in Thunderbird only.
+ * Each account's choice is in storage as chatGroups: { accounts: { <jid>:
+ * { on, name } } }, and the groups last put in place as chatGroupsApplied, so
+ * turning one off or renaming it moves the contacts out of the old one. Runs
+ * when an account connects, when a chat contact lands in a group (Thunderbird
+ * moves contacts back to their server groups when an account connects, and
+ * new contacts land in "Contacts"), and when the options page saves a choice.
+ */
+let chatGroupsQueue = Promise.resolve();
+
+function runChatGroups() {
+  const run = chatGroupsQueue.then(async () => {
+    const { chatGroups, chatGroupsApplied } = await browser.storage.local.get(["chatGroups", "chatGroupsApplied"]);
+    const groups = {};
+    for (const [jid, choice] of Object.entries(chatGroups?.accounts ?? {})) {
+      const name = String(choice?.name ?? "").trim();
+      if (choice?.on && name) {
+        groups[jid] = name;
+      }
+    }
+    const applied = chatGroupsApplied ?? {};
+    if (!Object.keys(groups).length && !Object.keys(applied).length) {
+      return null;
+    }
+    const result = await browser.omemoXmpp.chatGroups({ groups, applied });
+    if (result && JSON.stringify(result.applied) !== JSON.stringify(applied)) {
+      await browser.storage.local.set({ chatGroupsApplied: result.applied });
+    }
+    return result;
+  });
+  chatGroupsQueue = run.catch(() => {});
+  return run;
+}
+
+// Moving contacts fires the same notification again; the second run finds
+// everything in place and moves nothing, so this settles after one round.
+let chatGroupsTimer = null;
+function applyChatGroupsSoon() {
+  clearTimeout(chatGroupsTimer);
+  chatGroupsTimer = setTimeout(() => {
+    runChatGroups().catch((e) => console.log(`[omemo] ERROR: grouping chat contacts failed: ${e?.message ?? e}`));
+  }, 2000);
+}
+browser.omemoXmpp.onAccountConnected.addListener(applyChatGroupsSoon);
+browser.omemoXmpp.onChatContactsChanged.addListener(applyChatGroupsSoon);
+
 browser.runtime.onMessage.addListener((message) => {
   if (message?.command === "chatNames.preview") {
     return runChatNames(false);
@@ -132,6 +180,10 @@ browser.runtime.onMessage.addListener((message) => {
   // After the options page saved a choice: write at once, then show the result.
   if (message?.command === "chatNames.apply") {
     return runChatNames(true).then((result) => result ?? runChatNames(false));
+  }
+  // After the options page saved an account's group.
+  if (message?.command === "chatGroups.apply") {
+    return runChatGroups();
   }
   return undefined;
 });

@@ -91,6 +91,32 @@ function observeConnects(on) {
   });
 }
 
+// onChatContactsChanged: Thunderbird's "contact-tag-added" notification, sent
+// when a chat contact lands in a group (a new contact, or one Thunderbird moved
+// back to its server group at connect), so the per-account groups can be put
+// right again. No details: the background script just runs chatGroups again.
+const _groupSinks = new Set();
+const _groupObserver = {
+  observe() {
+    fireAll(_groupSinks);
+  },
+};
+let _observingGroups = false;
+
+function observeGroups(on) {
+  if (on === _observingGroups) {
+    return;
+  }
+  _observingGroups = on;
+  safely("watching chat contact groups", () => {
+    if (on) {
+      Services.obs.addObserver(_groupObserver, "contact-tag-added");
+    } else {
+      Services.obs.removeObserver(_groupObserver, "contact-tag-added");
+    }
+  });
+}
+
 // The generic stanza hook (watchStanzas, sendStanza, sendIq, addFeatures):
 // for code built on this add-on, such as calling. Kept here so they apply
 // whether they're set before or after install().
@@ -403,6 +429,22 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
           })) ?? null;
         },
 
+        async chatGroups(request) {
+          if (!_bridge) {
+            throw new Error("OMEMO isn't installed yet.");
+          }
+          const { IMServices } = ChromeUtils.importESModule(IM_SERVICES_URL);
+          return safely("grouping chat contacts", () => _core.groups.chatGroups({
+            accounts: connectedXmppAccounts(_xmppBase),
+            jidOf: (a) => _bridge.bareJidOf(a),
+            groups: request?.groups ?? {},
+            applied: request?.applied ?? {},
+            tags: IMServices.tags,
+            moved: (accountBuddy, oldTag, newTag) => IMServices.contacts.accountBuddyMoved(accountBuddy, oldTag, newTag),
+            log: diag,
+          })) ?? null;
+        },
+
         async sendStanza(jid, xml) {
           const { account, stanza } = accountAndStanza(jid, xml);
           account.sendStanza(stanza);
@@ -466,6 +508,18 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
             };
           },
         }).api(),
+        onChatContactsChanged: new EventManager({
+          context,
+          name: "omemoXmpp.onChatContactsChanged",
+          register(fire) {
+            _groupSinks.add(fire);
+            observeGroups(true);
+            return () => {
+              _groupSinks.delete(fire);
+              observeGroups(_groupSinks.size > 0);
+            };
+          },
+        }).api(),
       },
     };
   }
@@ -473,6 +527,8 @@ this.omemoXmpp = class extends ExtensionCommon.ExtensionAPI {
   onShutdown(isAppShutdown) {
     _connectedSinks.clear();
     observeConnects(false);
+    _groupSinks.clear();
+    observeGroups(false);
     for (const name of _hintCommands) {
       safely(`unregistering the /${name} command`, () => {
         ChromeUtils.importESModule(IM_SERVICES_URL).IMServices.cmd.unregisterCommand(name, PRPL_XMPP);

@@ -19,6 +19,7 @@
  */
 
 import qrcode from "qrcode-generator";
+import { defaultGroupName, groupName } from "../contacts/chat-groups.js";
 
 const DEFAULT_MODE = "manual";
 const saved = document.getElementById("saved");
@@ -181,7 +182,57 @@ function namesRow(contact, mode) {
   }
 }
 
-function renderChatNames(result) {
+/*
+ * A group per account in Thunderbird's chat contact list, in Thunderbird
+ * only: each account's choice is saved as chatGroups.accounts[jid] =
+ * { on, name }, and the background script moves the contacts.
+ */
+function groupStatus(status, result, jid) {
+  const account = result?.accounts?.find((a) => a.jid === jid);
+  if (!result || !account) {
+    status.textContent = result === null ? "" : "Couldn't change the group; see the add-on's console.";
+    return;
+  }
+  status.textContent = account.group
+    ? `${plural(account.contacts, "chat contact", "chat contacts")} in "${account.group}".`
+    : "Off: the chat contacts are back in their usual groups.";
+}
+
+function groupRow(jid, choice) {
+  const row = document.createElement("label");
+  row.className = "group-row";
+  const on = document.createElement("input");
+  on.type = "checkbox";
+  on.checked = Boolean(choice?.on);
+  const name = document.createElement("input");
+  name.type = "text";
+  name.maxLength = 64;
+  name.value = choice?.name || defaultGroupName(jid);
+  name.disabled = !on.checked;
+  name.setAttribute("aria-label", "Group name");
+  const status = document.createElement("span");
+  status.className = "detail";
+  const save = async () => {
+    name.disabled = !on.checked;
+    if (!groupName(name.value)) {
+      name.value = defaultGroupName(jid);
+    }
+    const { chatGroups } = await browser.storage.local.get("chatGroups");
+    const accounts = { ...chatGroups?.accounts, [jid]: { on: on.checked, name: groupName(name.value) } };
+    await browser.storage.local.set({ chatGroups: { ...chatGroups, accounts } });
+    try {
+      groupStatus(status, await browser.runtime.sendMessage({ command: "chatGroups.apply" }), jid);
+    } catch (e) {
+      status.textContent = `Couldn't change the group: ${e?.message ?? e}`;
+    }
+  };
+  on.addEventListener("change", save);
+  name.addEventListener("change", save);
+  row.append(on, " Own group in the chat list:", name, status);
+  return row;
+}
+
+function renderChatNames(result, groups = {}) {
   const container = document.getElementById("chat-names");
   container.replaceChildren();
   const say = (text) => {
@@ -220,7 +271,7 @@ function renderChatNames(result) {
     const summary = document.createElement("p");
     summary.className = "detail";
     summary.textContent = namesSummary(account);
-    box.append(name, label, summary);
+    box.append(name, label, summary, groupRow(account.jid, groups[account.jid]));
 
     if (account.contacts.length) {
       const details = document.createElement("details");
@@ -246,7 +297,8 @@ function renderChatNames(result) {
 
 async function showChatNames(command = "chatNames.preview") {
   try {
-    renderChatNames(await browser.runtime.sendMessage({ command }));
+    const { chatGroups } = await browser.storage.local.get("chatGroups");
+    renderChatNames(await browser.runtime.sendMessage({ command }), chatGroups?.accounts ?? {});
   } catch (e) {
     document.getElementById("chat-names").textContent = `Couldn't read the chat contacts: ${e?.message ?? e}`;
   }

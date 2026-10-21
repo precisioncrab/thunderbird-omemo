@@ -128,6 +128,22 @@
         ]
       },
       {
+        "name": "chatGroups",
+        "type": "function",
+        "description": "A group per account in Thunderbird's chat contact list, in Thunderbird only (src/contacts/chat-groups.js): moves each connected account's chat contacts into groups[jid], or out of applied[jid] when it has none. Returns { accounts: [{ jid, group, contacts, moved }], applied }, or null when it failed.",
+        "async": true,
+        "parameters": [
+          {
+            "name": "request",
+            "type": "object",
+            "properties": {
+              "groups": { "type": "object", "optional": true, "additionalProperties": { "type": "string" } },
+              "applied": { "type": "object", "optional": true, "additionalProperties": { "type": "string" } }
+            }
+          }
+        ]
+      },
+      {
         "name": "sendStanza",
         "type": "function",
         "description": "Generic hook: sends a stanza, given as XML text, from the connected account with this bare JID.",
@@ -226,6 +242,12 @@
             "enum": ["verify", "instructions"]
           }
         ]
+      },
+      {
+        "name": "onChatContactsChanged",
+        "type": "function",
+        "description": "A chat contact landed in a group in Thunderbird's contact list (Thunderbird's contact-tag-added), so the per-account groups may need putting right.",
+        "parameters": []
       },
       {
         "name": "onAccountConnected",

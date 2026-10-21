@@ -24,6 +24,8 @@ function loadBackground() {
   const store = {};
   const external = event();
   const runs = [];
+  const groupRuns = [];
+  const internal = event();
   const tabs = [];
   const sent = [];
   const browser = {
@@ -31,6 +33,7 @@ function loadBackground() {
       onDiagnostic: event(),
       onShowPage: event(),
       onAccountConnected: event(),
+      onChatContactsChanged: event(),
       setSettings: async () => {},
       install: async () => {},
       addHintCommand: async () => {},
@@ -41,6 +44,10 @@ function loadBackground() {
       },
       async sendStanza(account, xml) {
         sent.push([account, xml]);
+      },
+      async chatGroups(request) {
+        groupRuns.push(request);
+        return { accounts: [], applied: request.groups };
       },
       async chatNames(options) {
         runs.push(options);
@@ -61,7 +68,7 @@ function loadBackground() {
     contacts: { onCreated: event(), onUpdated: event(), onDeleted: event() },
     addressBooks: { list: async () => [{ contacts: [{ properties: { vCard: "BEGIN:VCARD\r\nFN:Test Two\r\nEND:VCARD" } }] }] },
     runtime: {
-      onMessage: event(),
+      onMessage: internal,
       onMessageExternal: external,
       getManifest: () => ({ name: "OMEMO for Thunderbird", version: "0.1.5", experiment_apis: { omemoXmpp: {} } }),
       getURL: (path) => `moz-extension://omemo/${path}`,
@@ -73,7 +80,8 @@ function loadBackground() {
   vm.runInContext(read("src/pro.js"), context);
   vm.runInContext(read("src/background.js"), context);
   const send = (message, id = "contacts-cleanup@precisioncrab") => external.listeners[0](message, { id });
-  return { send, store, runs, tabs, sent };
+  const ask = (message) => internal.listeners[0](message, {});
+  return { send, ask, store, runs, groupRuns, tabs, sent };
 }
 
 test("chat contacts: added with their names and asked for presence; refusals and bad addresses reported", async () => {
@@ -166,4 +174,22 @@ test("openOptions opens the options page at a known tab only", async () => {
   assert.equal(await send({ command: "openOptions", section: "contacts" }), true);
   await send({ command: "openOptions", section: "../../elsewhere" });
   assert.deepEqual(tabs, ["moz-extension://omemo/src/options/options.html#contacts", "moz-extension://omemo/src/options/options.html#settings"]);
+});
+
+test("the options page's group choices run with their names, and what was applied is kept", async () => {
+  const { ask, store, groupRuns } = loadBackground();
+  assert.equal(await ask({ command: "chatGroups.apply" }), null, "nothing on, nothing applied: no run");
+  store.chatGroups = { accounts: {
+    "main@example.org": { on: true, name: " Main " },
+    "second@example.org": { on: false, name: "second" },
+    "third@example.org": { on: true, name: "  " },
+  } };
+  await ask({ command: "chatGroups.apply" });
+  assert.deepEqual(JSON.parse(JSON.stringify(groupRuns.at(-1))), { groups: { "main@example.org": "Main" }, applied: {} });
+  assert.deepEqual(store.chatGroupsApplied, { "main@example.org": "Main" });
+  // Turned off: one more run, with what was applied, so the contacts move back.
+  store.chatGroups.accounts["main@example.org"].on = false;
+  await ask({ command: "chatGroups.apply" });
+  assert.deepEqual(JSON.parse(JSON.stringify(groupRuns.at(-1))), { groups: {}, applied: { "main@example.org": "Main" } });
+  assert.deepEqual(store.chatGroupsApplied, {});
 });
