@@ -11,7 +11,7 @@ Free and open source. If it's useful to you, please consider
 
 Thunderbird's built-in chat client supports XMPP natively, but has never shipped OMEMO
 (see [Mozilla bug 1237416](https://bugzilla.mozilla.org/show_bug.cgi?id=1237416), open
-since 2015). This project adds it as a WebExtension with an Experiment API, without
+since 2016). This project adds it as a WebExtension with an Experiment API, without
 forking Thunderbird: it hooks the existing JavaScript XMPP implementation that ships
 inside Thunderbird itself (`chat/protocols/xmpp/` in comm-central) to encrypt and
 decrypt 1:1 conversations using the Double Ratchet / X3DH construction defined by
