@@ -25,6 +25,7 @@ function loadBackground() {
   const external = event();
   const runs = [];
   const tabs = [];
+  const sent = [];
   const browser = {
     omemoXmpp: {
       onDiagnostic: event(),
@@ -33,6 +34,14 @@ function loadBackground() {
       setSettings: async () => {},
       install: async () => {},
       addHintCommand: async () => {},
+      // The server refuses refused@example.org.
+      async sendIq(account, xml) {
+        sent.push([account, xml]);
+        return xml.includes('jid="refused@example.org"') ? '<iq xmlns="jabber:client" type="error"/>' : '<iq xmlns="jabber:client" type="result"/>';
+      },
+      async sendStanza(account, xml) {
+        sent.push([account, xml]);
+      },
       async chatNames(options) {
         runs.push(options);
         return { cards: options.cards.length, accounts: [{ jid: "test1@test.snikket.chat", mode: options.modes["test1@test.snikket.chat"] ?? "off", contacts: [] }], written: options.written };
@@ -64,8 +73,35 @@ function loadBackground() {
   vm.runInContext(read("src/pro.js"), context);
   vm.runInContext(read("src/background.js"), context);
   const send = (message, id = "contacts-cleanup@precisioncrab") => external.listeners[0](message, { id });
-  return { send, store, runs, tabs };
+  return { send, store, runs, tabs, sent };
 }
+
+test("chat contacts: added with their names and asked for presence; refusals and bad addresses reported", async () => {
+  const { send, sent } = loadBackground();
+  assert.deepEqual({ ...(await send({ command: "chatContacts.hello" })) }, { add: true, remove: true });
+  const result = await send({ command: "chatContacts.add", account: "test1@test.snikket.chat", contacts: [
+    { jid: "+15556667777@cheogram.com", name: "Pat & Sam Roe" },
+    { jid: "not an address", name: "Nobody" },
+    { jid: "refused@example.org", name: "Refused" },
+  ] });
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), {
+    added: ["+15556667777@cheogram.com"],
+    failed: [{ jid: "not an address", error: "not a chat address" }, { jid: "refused@example.org", error: "the server refused it" }],
+  });
+  assert.equal(sent.length, 3);
+  assert.match(sent[0][1], /<item jid="\+15556667777@cheogram.com" name="Pat &amp; Sam Roe"\/>/);
+  assert.equal(sent[1][1], '<presence xmlns="jabber:client" to="+15556667777@cheogram.com" type="subscribe"/>');
+  assert.match(sent[2][1], /jid="refused@example.org"/);
+});
+
+test("chat contacts: removed with a roster remove; anything but a list is refused", async () => {
+  const { send, sent } = loadBackground();
+  const result = await send({ command: "chatContacts.remove", account: "test1@test.snikket.chat", jids: ["Friend@Example.org"] });
+  assert.deepEqual(JSON.parse(JSON.stringify(result)), { removed: ["friend@example.org"], failed: [] });
+  assert.match(sent[0][1], /<item jid="friend@example.org" subscription="remove"\/>/);
+  await assert.rejects(send({ command: "chatContacts.add", account: "test1@test.snikket.chat" }));
+  await assert.rejects(send({ command: "chatContacts.remove", account: "test1@test.snikket.chat", jids: "friend@example.org" }));
+});
 
 test("only Contacts Cleanup is answered", () => {
   const { send } = loadBackground();
