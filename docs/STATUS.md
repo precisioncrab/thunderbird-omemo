@@ -40,7 +40,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 
 ## Next steps
 
-**Test build 0.1.5 (2026-10-21), the first with automatic updates, the Contacts Cleanup listener and the Gumroad Pro link:** the maintainer tests it in Thunderbird; then the release in the order in `docs/HANDOFF.md` "Releases" (GitHub release `v0.1.5`, then `npm run updates` and push `updates.json`, then the same `.xpi` on the free Gumroad listing), then merge into Pro.
+**Test build 0.1.6 (2026-10-21; 0.1.5 plus adding people to the chat list for Contacts Cleanup), the first with automatic updates, the Contacts Cleanup listener and the Gumroad Pro link:** the maintainer tests it in Thunderbird; then the release in the order in `docs/HANDOFF.md` "Releases" (GitHub release `v0.1.6`, then `npm run updates` and push `updates.json`, then the same `.xpi` on the free Gumroad listing), then merge into Pro. 0.1.5 was never released.
 
 0. ~~Publish 0.1.1~~ **Released 2026-10-02** (https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.1). The store file rename can only be seen with an account that has `+` or other unusual characters in its JID (the test accounts don't).
 1. **Watch the releases:** GitHub issues from users, and whether other Thunderbird versions (ESR 128/140, newer releases) load it. Record each in the README's "Tested Thunderbird versions" table (added 2026-10-17).
@@ -62,6 +62,7 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 ## Log
 
 ### 2026-10-21
+- **Test build 0.1.6: Contacts Cleanup can add people to the chat list, free.** The maintainer decided (2026-10-21) that everything in Contacts Cleanup's chat page is free and OMEMO Pro is only calls; it had been a Pro build's (0.3.3, never released). The background answers Contacts Cleanup's `chatContacts.hello` (`{ add: true, remove: true }`), `chatContacts.add { account, contacts: [{ jid, name }] }` (a roster set with the name from the card, then a presence subscription: Thunderbird's own Add Contact plus the name) and `chatContacts.remove { account, jids }` (a roster set with `subscription="remove"`), through the Experiment's `sendIq` and `sendStanza`; the server's roster push updates Thunderbird's chat list. Answers `{ added | removed, failed: [{ jid, error }] }`; at most 500 per call. 2 tests (304). Not yet run in Thunderbird.
 - **Test build 0.1.5: OMEMO Pro is on sale.** Both Gumroad listings went live (OMEMO for Thunderbird at https://precisioncrab.gumroad.com/l/omemo, OMEMO Pro for Thunderbird at https://precisioncrab.gumroad.com/l/omemo-pro; both answered 200). `src/pro.js`: `url` is Pro's listing and `onSale` is true, so the options page's Pro card says "$10, one time" with Get Pro, and `/call` gives the price and the link. README: the Pro section links the listing instead of "Coming soon", and the Install steps mention the same file on the free Gumroad listing (pay what you want, for an email when a new version is out); GitHub stays the main home. `test/pro.test.js`: the README-anchor test became a test that Pro is on sale with its Gumroad link and the README links it (302 pass). 0.1.5 also carries automatic updates and the Contacts Cleanup listener (2026-10-20). Not released yet: `updates.json` is written at release time.
 
 ### 2026-10-20
