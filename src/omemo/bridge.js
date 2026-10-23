@@ -42,7 +42,8 @@
  * same goes when it can't be told whether a chat is encrypted: a message
  * sent while the account's OMEMO is starting waits for it, and in mode
  * "available" a failed device lookup blocks the message (retryable) rather
- * than counting as "no OMEMO".
+ * than counting as "no OMEMO". An address with no PEP at all, such as a
+ * JMP.chat or Cheogram phone number, counts as "no OMEMO" (pep.js fetchItems).
  *
  * Thunderbird's chat UI shows a conversation's encryptionState (the lock
  * button and "Encryption Status"), which the bridge provides for XMPP 1:1

@@ -27,6 +27,17 @@ const NS_STANZAS = "urn:ietf:params:xml:ns:xmpp-stanzas";
 const NS_CLIENT = "jabber:client";
 
 /** A pubsub request the server answered with an error. */
+/**
+ * Errors that mean an address has no PEP service at all, so nothing is
+ * published there (XEP-0163 section 4, XEP-0060 section 6.5.9.1): a
+ * gateway contact, such as a JMP.chat or Cheogram phone number, answers
+ * service-unavailable or feature-not-implemented.
+ */
+export const NO_PEP_CONDITIONS = ["service-unavailable", "feature-not-implemented"];
+
+/** Errors that mean we may not read the node, not that it's missing. */
+export const REFUSAL_CONDITIONS = ["forbidden", "not-authorized", "not-allowed", "registration-required", "subscription-required"];
+
 export class PepError extends Error {
   /**
    * @param {{ type: string|null, condition: string|null, pubsubCondition: string|null, text: string|null }} details
@@ -173,14 +184,19 @@ export function createPep(sendIq) {
      * Reads items from someone's node (ours if jid is null).
      *
      * @returns {Promise<{ id: string|null, payload: object|null }[]>} an
-     *   empty list if the node or item doesn't exist.
+     *   empty list if the node or item doesn't exist, or if someone else's
+     *   address has no PEP at all (NO_PEP_CONDITIONS: a gateway contact
+     *   such as a JMP.chat or Cheogram phone number) or answers with any
+     *   error a retry won't change (type cancel). Errors that may pass
+     *   (type wait, a timeout) and refusals (REFUSAL_CONDITIONS, whatever
+     *   their type) still throw: the node may be there.
      */
     async fetchItems(jid, node, itemId) {
       let reply;
       try {
         reply = await request(itemsIq(jid, node, itemId));
       } catch (e) {
-        if (e instanceof PepError && e.condition === "item-not-found") {
+        if (e instanceof PepError && (e.condition === "item-not-found" || (jid !== null && (NO_PEP_CONDITIONS.includes(e.condition) || (e.type === "cancel" && !REFUSAL_CONDITIONS.includes(e.condition)))))) {
           return [];
         }
         throw e;

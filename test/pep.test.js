@@ -85,6 +85,23 @@ test("a missing node or item reads as empty; other errors throw PepError", async
   await assert.rejects(bob.fetchItems("alice@example.org", "n"), (e) => e instanceof pep.PepError && e.condition === "forbidden");
 });
 
+test("someone else's address with no PEP (a JMP.chat or Cheogram number) reads as empty; our own doesn't", async () => {
+  for (const condition of pep.NO_PEP_CONDITIONS) {
+    const reply = parseXml(`<iq type='error' id='x'><error type='cancel'><${condition} xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error></iq>`);
+    const gateway = pep.createPep(async () => reply);
+    assert.deepEqual(await gateway.fetchItems("+15555550100@cheogram.com", "eu.siacs.conversations.axolotl.devicelist"), [], condition);
+    await assert.rejects(gateway.fetchItems(null, "eu.siacs.conversations.axolotl.devicelist"), (e) => e instanceof pep.PepError && e.condition === condition);
+  }
+  const reply = (type, condition) => parseXml(`<iq type='error' id='x'><error type='${type}'><${condition} xmlns='urn:ietf:params:xml:ns:xmpp-stanzas'/></error></iq>`);
+  // Any other error a retry won't change (type cancel) is no PEP too.
+  assert.deepEqual(await pep.createPep(async () => reply("cancel", "undefined-condition")).fetchItems("+15555550100@cheogram.com", "n"), []);
+  // An error that may pass, or a refusal, still throws: it can't be told.
+  await assert.rejects(pep.createPep(async () => reply("wait", "remote-server-timeout")).fetchItems("+15555550100@cheogram.com", "n"), (e) => e instanceof pep.PepError && e.condition === "remote-server-timeout");
+  for (const type of ["auth", "cancel"]) {
+    await assert.rejects(pep.createPep(async () => reply(type, "forbidden")).fetchItems("bob@example.org", "n"), (e) => e instanceof pep.PepError && e.condition === "forbidden");
+  }
+});
+
 test("publish-options that conflict with the node's settings: reconfigure once, then publish", async () => {
   const server = createFakePepServer();
   server.configure("alice@example.org", "urn:xmpp:omemo:2:bundles", { "pubsub#access_model": "presence", "pubsub#max_items": "1" });
