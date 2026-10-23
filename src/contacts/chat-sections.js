@@ -113,6 +113,38 @@ function dropRow(group, key) {
   delete group.contactsById[key];
 }
 
+/**
+ * Makes every contact row the section's group adds a row of that section:
+ * ROW_ATTR (or the style sheet hides it) and onRow. That includes the rows
+ * Thunderbird makes by itself: a contact row calls its group's
+ * updateContactPosition when the contact's availability or name changes
+ * (chat-contact.js), which takes the row out and adds a new one through the
+ * group's addContact. Rows already there without ROW_ATTR get it too.
+ */
+function tagRows(group, sectionId, onRow) {
+  group._omemoSection = { sectionId, onRow };
+  if (!group._omemoAddContact) {
+    group._omemoAddContact = group.addContact;
+    group.addContact = function (contact, tagName) {
+      const row = this._omemoAddContact(contact, tagName);
+      if (row) {
+        tagRow(row, this._omemoSection);
+      }
+      return row;
+    };
+  }
+  for (const row of group.contacts ?? []) {
+    if (!row.hasAttribute?.(ROW_ATTR)) {
+      tagRow(row, group._omemoSection);
+    }
+  }
+}
+
+function tagRow(row, { sectionId, onRow }) {
+  row.setAttribute(ROW_ATTR, sectionId);
+  onRow(row, sectionId);
+}
+
 /** Takes every section out of the listbox and shows Online and Offline contacts again. */
 export function removeSections(listbox) {
   for (const group of sectionGroups(listbox)) {
@@ -131,7 +163,8 @@ export function removeSections(listbox) {
  *
  * - createGroup(): a new, empty chat-group-richlistitem (not yet in the list)
  * - onRow(row, accountId): called for each new contact row (the Experiment
- *   makes it open the chat from that account)
+ *   makes it open the chat from that account), including the rows Thunderbird
+ *   makes again by itself (see tagRows)
  *
  * Returns { sections, added, removed }.
  */
@@ -158,6 +191,7 @@ export function syncSections(listbox, plan, { createGroup, onRow = () => {} }) {
       group.displayName = section.label;
       group._updateGroupLabel?.();
     }
+    tagRows(group, section.id, onRow);
     const wanted = new Map(section.contacts.map((c) => [String(c.id), c]));
     for (const key of Object.keys(group.contactsById ?? {})) {
       if (!wanted.has(key)) {
@@ -169,10 +203,7 @@ export function syncSections(listbox, plan, { createGroup, onRow = () => {} }) {
       if (group.contactsById?.[key]) {
         continue;
       }
-      const row = group.addContact(contact);
-      if (row) {
-        row.setAttribute(ROW_ATTR, section.id);
-        onRow(row, section.id);
+      if (group.addContact(contact)) {
         added++;
       }
     }

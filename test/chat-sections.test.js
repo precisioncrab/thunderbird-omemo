@@ -236,6 +236,50 @@ test("signing on moves a contact up in each section it's in", () => {
   assert.deepEqual(shown(list), [["test1", "Bob", "Amy"], ["test2", "Bob", "Amy"]]);
 });
 
+// Every row under a section header, and whether it would show (ROW_ATTR).
+function rowsShown(list) {
+  return sectionGroups(list).map((g) => [g.getAttribute("name"), ...g.contacts.map((r) => `${r.contact.displayName}${r.hasAttribute(ROW_ATTR) ? "" : " (hidden)"}`)]);
+}
+
+test("a row Thunderbird makes again (name or availability changed) stays in its section and shows", () => {
+  const list = makeList();
+  const opened = [];
+  const amy = makeContact("Amy", ["1", "2"]);
+  const zed = makeContact("Zed", ["1"]);
+  syncSections(list, planSections(accounts, [amy, zed]), { createGroup: () => new FakeGroup(), onRow: (row, id) => opened.push([row.contact.displayName, id]) });
+  opened.length = 0;
+  // chat-contact.js: the row calls its own group's updateContactPosition,
+  // which removes the row and adds a new one.
+  zed.displayName = "Alice";
+  for (const group of sectionGroups(list)) {
+    if (group.contactsById[zed.id]) {
+      group.updateContactPosition(zed);
+    }
+  }
+  assert.deepEqual(rowsShown(list), [["test1", "Alice", "Amy"], ["test2", "Amy"]]);
+  assert.deepEqual(opened, [["Alice", "1"]]);
+});
+
+test("signing on: the new rows show in every section", () => {
+  const list = makeList();
+  const amy = makeContact("Amy", ["1", "2"]);
+  const bob = makeContact("Bob", ["1", "2"]);
+  sync(list, planSections(accounts, [amy, bob]));
+  bob.statusType = 7;
+  repositionContact(list, bob);
+  assert.deepEqual(rowsShown(list), [["test1", "Bob", "Amy"], ["test2", "Bob", "Amy"]]);
+});
+
+test("a row left without the section mark (from 0.1.9) shows again at the next update", () => {
+  const list = makeList();
+  const amy = makeContact("Amy", ["1"]);
+  sync(list, planSections(accounts, [amy]));
+  const group = sectionGroups(list)[0];
+  group.contacts[0].removeAttribute(ROW_ATTR);
+  sync(list, planSections(accounts, [amy]));
+  assert.deepEqual(rowsShown(list), [["test1", "Amy"], ["test2"]]);
+});
+
 test("section names: chosen, else the address before the @, else the account's name", () => {
   assert.equal(sectionLabel({ jid: "Test1@test.snikket.chat" }, { "test1@test.snikket.chat": "  Work  " }), "Work");
   assert.equal(sectionLabel({ jid: "test1@test.snikket.chat" }, { "test1@test.snikket.chat": "  " }), "test1");
