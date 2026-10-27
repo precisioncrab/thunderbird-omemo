@@ -44,6 +44,17 @@ test("a card's phones, chat addresses and emails", () => {
   assert.deepEqual(card.emails, ["alice@mail.example"]);
 });
 
+test("Google's x-apple: chat addresses count as xmpp: ones", () => {
+  const card = readCard(vcard(
+    "FN:Bob",
+    "ITEM1.IMPP;X-SERVICE-TYPE=Other:x-apple:Bob@Example.org",
+    "ITEM2.IMPP;X-SERVICE-TYPE=Other:x-apple:bob@example.org",
+    "IMPP;X-SERVICE-TYPE=Other:x-apple:not an address",
+  ));
+  assert.deepEqual(card.xmpp, ["bob@example.org"]);
+  assert.deepEqual(nameFor(indexCards([vcard("FN:Bob", "IMPP;X-SERVICE-TYPE=Other:x-apple:bob@example.org")]), "bob@example.org"), { name: "Bob", by: "xmpp" });
+});
+
 test("phone numbers in any format, to +E.164", () => {
   assert.equal(phoneNumber("+1 (555) 234-5678"), "+15552345678");
   assert.equal(phoneNumber("555.234.5678"), "+15552345678");

@@ -11,7 +11,8 @@
  * +15551234567@cheogram.com, Quicksy's) matches the cards' phone numbers,
  * written in any format; a number without a country code counts as +1 when
  * it has 10 digits. Any other address matches the cards' xmpp: chat
- * addresses (IMPP), and failing that their email addresses. When the
+ * addresses (IMPP, Google's x-apple: ones too), and failing that their
+ * email addresses. When the
  * matching cards give different names, there is no name: never a guess.
  */
 
@@ -129,8 +130,17 @@ export function phoneOfChatAddress(jid) {
   return String(jid).includes("@") && /^\+\d{7,15}$/.test(node) ? node : null;
 }
 
-/** "xmpp:alice@example.org?message" -> "alice@example.org"; else null. */
+/**
+ * "xmpp:alice@example.org?message" -> "alice@example.org"; else null.
+ * Google Contacts stores a chat address without X-SERVICE-TYPE=Jabber as an
+ * "Other" service and sends it back as "x-apple:alice@example.org", so
+ * those count too.
+ */
 function chatAddress(value) {
+  const apple = /^x-apple:(.+)$/i.exec(value.trim());
+  if (apple) {
+    return bareAddress(apple[1]);
+  }
   const match = /^xmpp:(?:\/\/[^/]*\/)?([^?#]+)/i.exec(value.trim());
   return match ? bareAddress(decodeURIComponentSafe(match[1])) : null;
 }

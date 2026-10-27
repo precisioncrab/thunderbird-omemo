@@ -65,6 +65,10 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 
 ## Log
 
+### 2026-10-26
+
+- Test build 0.1.12: chat contact names from the address book also read Google's `x-apple:` chat addresses. Google Contacts stores a chat address saved without `X-SERVICE-TYPE=Jabber` as an "Other" service and sends it back as `x-apple:a@b`, so those cards matched no chat contact (seen on the maintainer's Google address book). `chatAddress` in `src/contacts/cards.js`, same reading as Contacts Cleanup's `chatAddressOf`. JMP.chat contacts weren't affected (they match by phone number). 329 tests.
+
 ### 2026-10-23 (2)
 
 - Test build 0.1.11: a text to a JMP.chat number didn't go through in mode "available" (the maintainer). Gateway addresses have no PEP, so the device list fetch errors out, which counted as a failed lookup and blocked the message. `fetchItems` now returns no items for someone else's address on service-unavailable, feature-not-implemented or another type cancel error other than a refusal (`NO_PEP_CONDITIONS`, `REFUSAL_CONDITIONS`). 328 tests.
