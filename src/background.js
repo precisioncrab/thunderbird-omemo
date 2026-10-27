@@ -210,7 +210,9 @@ browser.runtime.onMessage.addListener((message) => {
  * Contacts Cleanup, the free address book add-on on addons.thunderbird.net
  * (github.com/precisioncrab/contacts-cleanup), runs the same chat contact
  * names from its Chat contacts tab, since it can't reach Thunderbird's
- * chat itself. Only that add-on is answered. Protocol 1:
+ * chat itself. Daynizer for Thunderbird carries the same Chat page (its
+ * Contacts tab has Contacts Cleanup's tools) and asks the same way. Only
+ * those two add-ons are answered. Protocol 1:
  *   { command: "hello" }                        -> { name, version, pro, protocol }
  *   { command: "chatNames.preview" }            -> what the Chat contacts tab shows
  *   { command: "chatNames.setMode", jid, mode } -> saves an account's choice, writes, the same
@@ -227,6 +229,9 @@ browser.runtime.onMessage.addListener((message) => {
  * updates Thunderbird's chat list.
  */
 const CONTACTS_CLEANUP_ID = "contacts-cleanup@precisioncrab";
+// Daynizer's id on addons.thunderbird.net (its listed build; not the old self-distributed one).
+const DAYNIZER_ID = "daynizer@precisioncrab.com";
+const ANSWERED_ADDONS = [CONTACTS_CLEANUP_ID, DAYNIZER_ID];
 const MAX_CHAT_CONTACTS = 500;
 const ROSTER_TIMEOUT_MS = 10000;
 const BARE_JID = /^[^@\s/<>"'&]+@[^@\s/<>"'&]+$/;
@@ -303,13 +308,15 @@ async function saveNameMode(jid, mode) {
 }
 
 browser.runtime.onMessageExternal.addListener((message, sender) => {
-  if (sender?.id !== CONTACTS_CLEANUP_ID) {
+  if (!ANSWERED_ADDONS.includes(sender?.id)) {
     return undefined;
   }
   switch (message?.command) {
     case "hello": {
-      // Installed, so the options page stops showing its card.
-      browser.storage.local.set({ contactsCleanup: { seen: true } }).catch(() => {});
+      // Contacts Cleanup is installed, so the options page stops showing its card.
+      if (sender.id === CONTACTS_CLEANUP_ID) {
+        browser.storage.local.set({ contactsCleanup: { seen: true } }).catch(() => {});
+      }
       const manifest = browser.runtime.getManifest();
       return Promise.resolve({ name: manifest.name, version: manifest.version, pro: OMEMO_PRO.isPro(manifest), protocol: 1 });
     }

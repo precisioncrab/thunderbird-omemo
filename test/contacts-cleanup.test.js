@@ -118,11 +118,23 @@ test("chat contacts: removed with a roster remove; anything but a list is refuse
   await assert.rejects(send({ command: "chatContacts.remove", account: "test1@test.snikket.chat", jids: "friend@example.org" }));
 });
 
-test("only Contacts Cleanup is answered", () => {
+test("only Contacts Cleanup and Daynizer are answered", async () => {
   const { send } = loadBackground();
   assert.equal(send({ command: "hello" }, "someone-else@example.org"), undefined);
   assert.equal(send({ command: "chatNames.preview" }, null), undefined);
+  // Daynizer's old self-distributed build isn't the add-on users have.
+  assert.equal(send({ command: "hello" }, "tasks-desktop@arlis"), undefined);
   assert.equal(send({ command: "unknown" }), undefined);
+  assert.equal({ ...(await send({ command: "hello" }, "daynizer@precisioncrab.com")) }.protocol, 1);
+});
+
+test("Daynizer gets the same chat contacts commands as Contacts Cleanup", async () => {
+  const { send, sent } = loadBackground();
+  const daynizer = (message) => send(message, "daynizer@precisioncrab.com");
+  assert.deepEqual({ ...(await daynizer({ command: "chatContacts.hello" })) }, { add: true, remove: true });
+  const result = await daynizer({ command: "chatContacts.add", account: "test1@test.snikket.chat", contacts: [{ jid: "test2@test.snikket.chat", name: "Test Two" }] });
+  assert.deepEqual([...result.added], ["test2@test.snikket.chat"]);
+  assert.match(sent[0][1], /<item jid="test2@test\.snikket\.chat" name="Test Two"\/>/);
 });
 
 test("hello says which add-on and version answers", async () => {
@@ -133,6 +145,7 @@ test("hello says which add-on and version answers", async () => {
 test("hello from Contacts Cleanup notes it's installed (the options page then hides its card); others' don't", async () => {
   const { send, store } = loadBackground();
   send({ command: "hello" }, "someone-else@example.org");
+  await send({ command: "hello" }, "daynizer@precisioncrab.com");
   assert.equal(store.contactsCleanup, undefined);
   await send({ command: "hello" });
   assert.deepEqual(store.contactsCleanup, { seen: true });
@@ -142,8 +155,8 @@ test("the options page and README say what Contacts Cleanup can ask for, and lin
   const page = read("src/options/options.html");
   const readme = read("README.md");
   const access = (text, heading) => text.slice(text.indexOf(heading), text.indexOf(heading) + 4000);
-  assert.match(access(page, "What this add-on can access"), /<li>Requests from Contacts Cleanup[^<]*and from no other add-on/);
-  assert.match(access(readme, "## What this add-on can access"), /Requests from \[Contacts Cleanup\]\(#more-from-precision-crab\)/);
+  assert.match(access(page, "What this add-on can access"), /<li>Requests from Contacts Cleanup[^<]*from Daynizer for Thunderbird[^<]*and from no other add-on/);
+  assert.match(access(readme, "## What this add-on can access"), /Requests from \[Contacts Cleanup\]\(#more-from-precision-crab\)[\s\S]*\[Daynizer\]\(#more-from-precision-crab\)[\s\S]*from no other add-on/);
   const url = read("src/options/options.js").match(/const CONTACTS_CLEANUP = \{\s*url: "([^"]+)"/)?.[1];
   assert.ok(url, "options.js has no Contacts Cleanup link");
   assert.ok(readme.includes(`[Contacts Cleanup](${url})`), "the README links Contacts Cleanup somewhere else than the options page");

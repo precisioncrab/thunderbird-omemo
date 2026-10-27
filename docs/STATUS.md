@@ -65,6 +65,10 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 
 ## Log
 
+### 2026-10-27
+
+- Test build 0.1.13: Daynizer for Thunderbird is answered too. Its Contacts tab carries Contacts Cleanup's Chat page and asks over `runtime.onMessageExternal` exactly like Contacts Cleanup, so the background answers `daynizer@precisioncrab.com` (Daynizer's id on addons.thunderbird.net) as well as `contacts-cleanup@precisioncrab`, with the same protocol; only Contacts Cleanup's hello hides the options page's Contacts Cleanup card. The access lists on the options page and in the README name Daynizer. 330 tests.
+
 ### 2026-10-26
 
 - Test build 0.1.12: chat contact names from the address book also read Google's `x-apple:` chat addresses. Google Contacts stores a chat address saved without `X-SERVICE-TYPE=Jabber` as an "Other" service and sends it back as `x-apple:a@b`, so those cards matched no chat contact (seen on the maintainer's Google address book). `chatAddress` in `src/contacts/cards.js`, same reading as Contacts Cleanup's `chatAddressOf`. JMP.chat contacts weren't affected (they match by phone number). 329 tests.

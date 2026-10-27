@@ -135,11 +135,12 @@ uses:
 - Thunderbird's chat list, to show a section per account (switched off on the Chat
   contacts tab). In Thunderbird only; nothing is sent to your server.
 - Requests from [Contacts Cleanup](#more-from-precision-crab), the free address book
-  add-on from the same maker, and from no other add-on. Through it you can see and change
-  the Chat contacts tab's choices, open the options page, and add people to an account's
-  contact list on your XMPP server or take them off. Adding someone also asks to see when
-  they're online, as Thunderbird's own Add Contact does. Contacts Cleanup asks for a
-  change only when you make one there.
+  add-on from the same maker, and from [Daynizer](#more-from-precision-crab) for
+  Thunderbird (its Contacts tab has the same tools), and from no other add-on. Through
+  them you can see and change the Chat contacts tab's choices, open the options page, and
+  add people to an account's contact list on your XMPP server or take them off. Adding
+  someone also asks to see when they're online, as Thunderbird's own Add Contact does.
+  They ask for a change only when you make one there.
 - The settings, in the add-on's own WebExtension storage.
 
 It makes no other network connections: no telemetry, no license server. Separately,
