@@ -3,9 +3,9 @@
     "thunderbird-omemo@precisioncrab": {
       "updates": [
         {
-          "version": "0.1.11",
-          "update_link": "https://github.com/precisioncrab/thunderbird-omemo/releases/download/v0.1.11/thunderbird-omemo-0.1.11.xpi",
-          "update_hash": "sha256:360a03ee653677b1b5bad4984a3ce46f4a7d5f20c615633a445a482d99f0e1eb",
+          "version": "0.1.13",
+          "update_link": "https://github.com/precisioncrab/thunderbird-omemo/releases/download/v0.1.13/thunderbird-omemo-0.1.13.xpi",
+          "update_hash": "sha256:c736cf0ec9e3fe5b919f3f90e9c2bfbc5abbf2573a5ee0b11f027a3278ac8d78",
           "applications": {
             "gecko": {
               "strict_min_version": "128.0"
