@@ -40,6 +40,8 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 
 ## Next steps
 
+**Test build 0.1.14 (2026-11-10): forged message carbons are dropped before decryption.** From an outside code review (2026-11-10, finding 1, critical): `decryptInPlace` believed a carbon's inner sender without checking that the carbon came from our own account, so anyone could send a carbon claiming to be from a contact and the add-on would start a session, use up a prekey and blind-trust the sender's key under that contact's name, before Thunderbird's own code saw the message. Now a carbon carrying OMEMO whose outer `from` isn't our own bare JID is dropped and logged (no `from` still counts as our own account, RFC 6120). 331 tests. `dist/thunderbird-omemo-0.1.14.xpi`. Next: the maintainer tests it (normal chat both ways, and a message sent from the phone still shows as ours), then the release.
+
 **0.1.13 released 2026-10-28** (https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.13; includes test build 0.1.12; `updates.json` and the DOAP file list it). Gumroad file: optional, now and then.
 
 **0.1.11 released 2026-10-23** (https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.11; `updates.json` and the DOAP file list it; 0.1.8 to 0.1.10 were test builds only). Next: the same `.xpi` on the free Gumroad listing. **Test build 0.1.11 (2026-10-23): texts to JMP.chat numbers go out unencrypted in "use OMEMO when available".** Found by the maintainer: a text to a JMP.chat number was blocked by OMEMO. The device list lookup on a gateway address (`+1...@cheogram.com`) gets an error, not item-not-found, and a failed lookup blocks the message. Now someone else's address answering service-unavailable, feature-not-implemented or any other type cancel error (not a refusal) reads as no devices (`fetchItems` in `src/omemo/pep.js`); errors that may pass (type wait, timeouts) and refusals still block. 328 tests. Includes 0.1.10.
@@ -66,6 +68,10 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 - **The project-root docs are not in git:** `NEXT.md`, `_context.md` and `AGENTS.md` sit outside the repo. Consider moving them in.
 
 ## Log
+
+### 2026-11-10
+
+- Test build 0.1.14, code review finding 1: a message carbon (XEP-0280) is only believed when it comes from our own account. `decryptInPlace` (`src/omemo/bridge.js`) now checks the outer `from` before decrypting and returns a new outcome, "forged", which `onMessageStanza` drops like an empty message, with the log line "dropped a forged carbon". The + Calls router already made this check for call messages. New test in `test/messaging.test.js`: a forged received carbon (claiming to be test1) and a forged sent carbon (claiming to be our own phone), each a real key exchange from a third account, leave the key store byte-for-byte unchanged and never reach Thunderbird; the same stanza without an outer `from` still decrypts. The test fails with the check removed. 331 tests.
 
 ### 2026-10-27
 

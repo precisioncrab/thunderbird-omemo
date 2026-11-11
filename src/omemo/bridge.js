@@ -671,9 +671,10 @@ export function installBridge(tb) {
    * Decrypts an incoming message (or carbon) in place: the <encrypted> body
    * replaces the fallback <body>, or a notice does if decryption fails.
    *
-   * @returns {"none"|"decrypted"|"failed"|"empty"} "empty": an empty OMEMO
-   *   message, which shouldn't reach the conversation; "failed": a notice
-   *   replaced the body.
+   * @returns {"none"|"decrypted"|"failed"|"empty"|"forged"} "empty": an
+   *   empty OMEMO message, which shouldn't reach the conversation; "failed":
+   *   a notice replaced the body; "forged": a carbon that didn't come from
+   *   our own account, dropped without touching any OMEMO state.
    */
   function decryptInPlace(account, stanza) {
     const carbon = stanza.getChildren("sent").concat(stanza.getChildren("received")).find((c) => c.uri === NS_CARBONS);
@@ -685,6 +686,15 @@ export function installBridge(tb) {
       return "none";
     }
     const ourJid = bareJidOf(account);
+    // XEP-0280 section 11: only our own account sends us carbons (no "from"
+    // means our own account, RFC 6120 8.1.2.1). Anyone else could wrap a
+    // message claiming to be from a contact, so check before decrypting:
+    // decrypting starts sessions, uses up prekeys and trusts new keys.
+    const outerFrom = stanza.attributes.from;
+    if (carbon && outerFrom && bare(outerFrom) !== ourJid) {
+      log(`dropped a forged carbon: it came from ${bare(outerFrom)}, not from ${ourJid}`);
+      return "forged";
+    }
     const sender = target.attributes.from ?? ourJid;
     const peerJid = bare(isSent ? target.attributes.to : sender);
     if (!decrypts(account, peerJid)) {
@@ -883,7 +893,7 @@ export function installBridge(tb) {
       return undefined;
     }
     const outcome = safely("decrypting a message", () => decryptInPlace(this, aStanza));
-    if (outcome === "empty") {
+    if (outcome === "empty" || outcome === "forged") {
       return undefined;
     }
     if (outcome === "decrypted") {

@@ -198,6 +198,42 @@ test("carbons go through decryption too: a replayed message arriving as a carbon
   assert.doesNotMatch(xml, /This message is OMEMO encrypted/, "the fallback body is gone");
 });
 
+test("a forged carbon (not from our own account) is dropped before it can start a session, use a prekey or trust a key", async () => {
+  const { bridge, accounts, lines } = await setup();
+  const t2 = bridge.accounts.get(accounts[T2]).store;
+  const t2Bundle = f.parseBundle("twomemo", parseXml(serialize(f.buildBundle("twomemo", t2.bundle("twomemo")))));
+  // carol's own key exchange, claiming to come from test1 (received) or from
+  // test2's own phone (sent).
+  for (const [kind, claimed, inner] of [
+    ["received", T1, `from="${T1}/phone" to="${T2}"`],
+    ["sent", T2, `from="${T2}/phone" to="${T1}"`],
+  ]) {
+    const attacker = createStore();
+    const { encrypted } = encryptMessage(attacker, "twomemo", {
+      ourJid: claimed,
+      body: null,
+      recipients: [{ jid: T2, deviceId: t2.deviceId, bundle: t2Bundle }],
+    });
+    const wrapped = (outerFrom) => parseToXmlNode(`<message xmlns="jabber:client"${outerFrom ? ` from="${outerFrom}"` : ""} to="${T2}/Thunderbird">` +
+      `<${kind} xmlns="urn:xmpp:carbons:2"><forwarded xmlns="urn:xmpp:forward:0"><message xmlns="jabber:client" ${inner} type="chat">` +
+      `<body>${FALLBACK_BODY}</body>${serialize(f.buildEncrypted("twomemo", encrypted))}</message></forwarded></${kind}></message>`);
+    const before = JSON.stringify(t2.toJSON());
+    const receivedBefore = accounts[T2].received.length;
+
+    accounts[T2].onMessageStanza(wrapped(`${CAROL}/laptop`));
+    assert.equal(JSON.stringify(t2.toJSON()), before, `${kind}: test2's keys, sessions and trust are untouched`);
+    assert.equal(t2.session("twomemo", claimed, attacker.deviceId) ?? null, null, `${kind}: no session under ${claimed}`);
+    assert.equal(t2.deviceKey(claimed, attacker.deviceId) ?? null, null, `${kind}: carol's key isn't recorded as ${claimed}'s`);
+    assert.equal(accounts[T2].received.length, receivedBefore, `${kind}: Thunderbird never sees it`);
+    assert.ok(lines.includes(`dropped a forged carbon: it came from ${CAROL}, not from ${T2}`), `${kind}: logged`);
+
+    // The same carbon with no "from" (our own account, RFC 6120) is decrypted:
+    // the outer sender is the only thing the check looks at.
+    accounts[T2].onMessageStanza(wrapped(null));
+    assert.notEqual(t2.session("twomemo", claimed, attacker.deviceId) ?? null, null, `${kind}: own-account carbon still decrypts`);
+  }
+});
+
 test("a message not encrypted for this device shows a notice instead of the fallback", async () => {
   const { accounts } = await setup();
   accounts[T2].onMessageStanza(parseToXmlNode(`<message xmlns="jabber:client" from="${T1}/phone" to="${T2}" type="chat">` +
