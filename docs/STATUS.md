@@ -40,6 +40,8 @@ _Current state and session log, newest on top. The task list is `docs/TASKS.md`;
 
 ## Next steps
 
+**0.1.14 released 2026-11-24** (https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.14; the maintainer's test passed in + Calls 0.3.13; `updates.json` and the DOAP file list it). Gumroad file: optional, now and then.
+
 **Test build 0.1.14 (2026-11-10): forged message carbons are dropped before decryption.** From an outside code review (2026-11-10, finding 1, critical): `decryptInPlace` believed a carbon's inner sender without checking that the carbon came from our own account, so anyone could send a carbon claiming to be from a contact and the add-on would start a session, use up a prekey and blind-trust the sender's key under that contact's name, before Thunderbird's own code saw the message. Now a carbon carrying OMEMO whose outer `from` isn't our own bare JID is dropped and logged (no `from` still counts as our own account, RFC 6120). 331 tests. `dist/thunderbird-omemo-0.1.14.xpi`. Next: the maintainer tests it (normal chat both ways, and a message sent from the phone still shows as ours), then the release.
 
 **0.1.13 released 2026-10-28** (https://github.com/precisioncrab/thunderbird-omemo/releases/tag/v0.1.13; includes test build 0.1.12; `updates.json` and the DOAP file list it). Gumroad file: optional, now and then.
